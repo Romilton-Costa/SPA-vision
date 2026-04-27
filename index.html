@@ -495,15 +495,14 @@ let refreshTimer = null;
 let nextRefreshAt = null;
 
 function saveDates() {
-    const startEl = document.getElementById('dataInicio');
-    const endEl = document.getElementById('dataFim');
-
-    // Só tenta salvar se os elementos existirem na tela
-    if (startEl && endEl) {
-        try { 
-            sessionStorage.setItem('spa_inicio', startEl.value); 
-            sessionStorage.setItem('spa_fim', endEl.value); 
-        } catch(_) {}
+    const sEl = document.getElementById('dataInicio');
+    const eEl = document.getElementById('dataFim');
+    
+    if (sEl && eEl) {
+        try {
+            sessionStorage.setItem('spa_inicio', sEl.value);
+            sessionStorage.setItem('spa_fim', eEl.value);
+        } catch(e) {}
     }
 }
 
@@ -523,9 +522,14 @@ function clearDates() {
 
 async function fetchData(manualInicio = null, manualFim = null) {
     saveDates();
+    
+    const sEl = document.getElementById('dataInicio');
+    const eEl = document.getElementById('dataFim');
+    const inicio = manualStart || (sEl ? sEl.value : '');
+    const fim    = manualEnd   || (eEl ? eEl.value : '');
 
-    const inicio = manualInicio || document.getElementById('dataInicio')?.value || '';
-    const fim    = manualFim    || document.getElementById('dataFim')?.value    || '';
+   // const inicio = manualInicio || document.getElementById('dataInicio')?.value || '';
+   // const fim    = manualFim    || document.getElementById('dataFim')?.value    || '';
 
     //const inicio = document.getElementById('dataInicio').value;
    // const fim    = document.getElementById('dataFim').value;
@@ -577,22 +581,21 @@ function setPeriod(periodo) {
     }
 
     const format = (d) => d.toISOString().split('T')[0];
-    
-    const startValue = format(dataInicio);
-    const endValue = format(hoje);
+    const sStr = format(dataInicio);
+    const eStr = format(hoje);
 
-    // Tenta atualizar os campos se eles existirem
     const startEl = document.getElementById('dataInicio');
     const endEl = document.getElementById('dataFim');
 
+    // Só tenta definir o valor se os elementos existirem no HTML
     if (startEl && endEl) {
-        startEl.value = startValue;
-        endEl.value = endValue;
+        startEl.value = sStr;
+        endEl.value = eStr;
+        fetchData(); // Busca normal usando os valores dos inputs
+    } else {
+        // Se não houver inputs, passa as datas diretamente para o fetchData
+        fetchData(sStr, eStr);
     }
-
-    // Chama a busca passando as datas diretamente, 
-    // garantindo que funcione mesmo sem os elementos na tela
-    fetchData(startValue, endValue);
 }
 function renderSummary(data) {
     const total = data.reduce((s, d) => s + (d.total_pendentes || 0), 0);
