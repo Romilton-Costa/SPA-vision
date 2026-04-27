@@ -49,7 +49,7 @@ NATIVE_QUERY = """
 SELECT *
 FROM judicial_processes_pending_notice_validations
 WHERE registered = false
-AND DATE(created_at) >= '2026-04-01'
+
 [[AND DATE(created_at) >= CAST({{dataInicio}} AS DATE)]]
 [[AND DATE(created_at) <= CAST({{dataFim}} AS DATE)]]
 """
