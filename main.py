@@ -35,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ─── RATE LIMITER ────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+limiter = Limiter(key_func=get_remote_address, default_limits=["200 per hour", "20 per minute"])
 
 # ─── SCHEDULER (recarrega cache a cada 1h) ───────────────────────────────────
 scheduler = BackgroundScheduler()

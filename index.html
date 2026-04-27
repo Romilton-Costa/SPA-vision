@@ -527,38 +527,36 @@ function clearDates() {
 
 async function fetchData(manualStart = null, manualEnd = null) {
     saveDates();
-    
-    const sEl = document.getElementById('dataInicio');
-    const eEl = document.getElementById('dataFim');
-    const inicio = manualStart || (sEl ? sEl.value : '');
-    const fim    = manualEnd   || (eEl ? eEl.value : '');
-
-   // const inicio = manualInicio || document.getElementById('dataInicio')?.value || '';
-   // const fim    = manualFim    || document.getElementById('dataFim')?.value    || '';
-
-    //const inicio = document.getElementById('dataInicio').value;
-   // const fim    = document.getElementById('dataFim').value;
-
-    let url = `${API_BASE}/processos/resumo?t=${Date.now()}`;
-    if (inicio) url += `&dataInicio=${inicio}`;
-    if (fim)    url += `&dataFim=${fim}`;
-
     showLoading(true);
 
-    try {
-        const res  = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+    const sEl = document.getElementById('dataInicio');
+    const eEl = document.getElementById('dataFim');
 
+    // Usa as datas passadas pelos botões OU dos inputs (se existirem)
+    const inicio = manualStart || (sEl ? sEl.value : (sessionStorage.getItem('spa_inicio') || ''));
+    const fim    = manualEnd   || (eEl ? eEl.value : (sessionStorage.getItem('spa_fim') || ''));
+
+    try {
+        let url = `${API_BASE}/processos/resumo?t=${Date.now()}`;
+        if (inicio) url += `&dataInicio=${inicio}`;
+        if (fim)    url += `&dataFim=${fim}`;
+
+        const res = await fetch(url);
+        
+        // Se receber erro 429, avisa o utilizador de forma amigável
+        if (res.status === 429) {
+            toast("Muitas requisições. Aguarde 1 minuto.", "error");
+            showLoading(false);
+            return;
+        }
+
+        const data = await res.json();
         rawData = data;
         renderAll();
-
-        const isCached = data.length > 0 && data[0].cached;
-        updateCacheBadge(isCached);
-
-        scheduleNextRefresh();
+        updateCacheBadge(data.some(d => d.cached));
     } catch (err) {
-        toast(`Erro ao carregar dados: ${err.message}`, 'error');
+        toast("Erro ao carregar dados", "error");
+        console.error(err);
     } finally {
         showLoading(false);
     }
@@ -575,37 +573,34 @@ function renderAll() {
     //renderChart(filtered);
 }
 
-function setPeriod(periodo,element) {
-    document.querySelectorAll('.date-group .btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    if (element) {
-        element.classList.add('active');
-    }
+function setPeriod(periodo, element) {
+    // Gestão visual dos botões
+    document.querySelectorAll('.date-group .btn').forEach(btn => btn.classList.remove('active'));
+    if (element) element.classList.add('active');
+
     const hoje = new Date();
     let dataInicio = new Date();
     
-    if (periodo === 'semana') {
-        dataInicio.setDate(hoje.getDate() - 7);
-    } else if (periodo === 'mes') {
-        dataInicio.setMonth(hoje.getMonth() - 1);
-    }
+    if (periodo === 'semana') dataInicio.setDate(hoje.getDate() - 7);
+    else if (periodo === 'mes') dataInicio.setMonth(hoje.getMonth() - 1);
 
     const format = (d) => d.toISOString().split('T')[0];
     const sStr = format(dataInicio);
     const eStr = format(hoje);
 
-    const startEl = document.getElementById('dataInicio');
-    const endEl = document.getElementById('dataFim');
+    // Guarda no sessionStorage para uso do modal/refresh
+    sessionStorage.setItem('spa_inicio', sStr);
+    sessionStorage.setItem('spa_fim', eStr);
 
-    // Só tenta definir o valor se os elementos existirem no HTML
-    if (startEl && endEl) {
-        startEl.value = sStr;
-        endEl.value = eStr;
-        fetchData(); // Busca normal usando os valores dos inputs
+    const sEl = document.getElementById('dataInicio');
+    const eEl = document.getElementById('dataFim');
+
+    if (sEl && eEl) {
+        sEl.value = sStr;
+        eEl.value = eStr;
+        fetchData();
     } else {
-        // Se não houver inputs, passa as datas diretamente para o fetchData
-        fetchData(sStr, eStr);
+        fetchData(sStr, eStr); // Passa os valores diretamente
     }
 }
 function renderSummary(data) {
