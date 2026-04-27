@@ -1,5 +1,5 @@
 ## monitoramento de expedientes
--- implementar variaveis secrets
--- implementar security na aplicação 
--- melhorar o design para ver na tv
--- melhorar a performance , verificar o expedientes a CADA HORA
+- remover label do inicio
+- adicionar o botao de dia, semana
+- card de 6 na tela
+- ajusta a cor
