@@ -130,7 +130,12 @@
             cursor: pointer;
             transition: .2s;
         }
-
+    .btn.active {
+         background: var(--accent) !important; /* Cor azul que você já usa */
+        color: var(--bg) !important;        /* Cor do texto escura para contraste */
+        font-weight: 600;
+        border-color: var(--accent);
+    }
         .btn:hover { border-color: var(--accent); color: var(--accent); }
 
         .btn.primary {
@@ -570,7 +575,13 @@ function renderAll() {
     //renderChart(filtered);
 }
 
-function setPeriod(periodo) {
+function setPeriod(periodo,element) {
+    document.querySelectorAll('.date-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    if (element) {
+        element.classList.add('active');
+    }
     const hoje = new Date();
     let dataInicio = new Date();
     
