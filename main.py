@@ -8,7 +8,7 @@ Melhorias:
   - Endpoint /cache/refresh para forçar recarga manual
   - Compatível com Vercel (via Mangum) e execução local
 """
-
+from mangum import Mangum
 import os
 import logging
 import re
@@ -289,3 +289,5 @@ try:
     handler = Mangum(app, lifespan="off")
 except ImportError:
     pass  # Não está rodando na Vercel
+    
+handler = Mangum(app)
