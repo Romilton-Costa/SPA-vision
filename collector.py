@@ -50,7 +50,9 @@ SELECT *
 FROM judicial_processes_pending_notice_validations
 WHERE registered = false
 AND DATE(created_at) >= current_date - interval '7' day
+AND DATE(created_at) >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
 [[AND DATE(created_at) >= CAST({{dataInicio}} AS DATE)]]
+[[AND DATE(created_at) <= CAST({{dataFim}} AS DATE)]]
 [[AND DATE(created_at) <= CAST({{dataFim}} AS DATE)]]
 """
 

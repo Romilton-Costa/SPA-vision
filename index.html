@@ -166,7 +166,7 @@
             border-top: 4px solid var(--accent);
         }
 
-        .summary-card.pge { border-color: var(--pink); }
+        .summary-card.pge { border-color: var(--green); }
         .summary-card.pgm { border-color: var(--green); }
         .summary-card.err { border-color: var(--red); }
 
@@ -206,7 +206,7 @@
             box-shadow: 0 12px 32px rgba(0,0,0,.4);
         }
 
-        .card.PGE { border-color: var(--pink); }
+        .card.PGE { border-color: var(--green); }
         .card.PGM { border-color: var(--green); }
         .card.error { border-color: var(--red); opacity: .7; }
 
@@ -433,6 +433,7 @@
     </div>
 
     <div class="toolbar">
+        <!--
         <div class="date-group">
             <label>Data início</label>
             <input type="date" id="dataInicio">
@@ -440,6 +441,14 @@
         <div class="date-group">
             <label>Data fim</label>
             <input type="date" id="dataFim">
+        </div>-->
+        <div class="date-group">
+        <label>Períodos</label>
+        <div style="display: flex; gap: 4px;">
+        <button class="btn" onclick="setPeriod('hoje')">Hoje</button>
+        <button class="btn" onclick="setPeriod('semana')">Semana</button>
+        <button class="btn" onclick="setPeriod('mes')">Mês</button>
+        </div>
         </div>
         <button class="btn primary" onclick="fetchData()">Filtrar</button>
         <button class="btn" onclick="clearDates()">Limpar</button>
@@ -546,6 +555,28 @@ function renderAll() {
     //renderChart(filtered);
 }
 
+function setPeriod(periodo) {
+    const hoje = new Date();
+    let dataInicio = new Date();
+    
+    // Ajuste da data de início conforme o período
+    if (periodo === 'hoje') {
+        // dataInicio já é hoje
+    } else if (periodo === 'semana') {
+        dataInicio.setDate(hoje.getDate() - 7);
+    } else if (periodo === 'mes') {
+        dataInicio.setMonth(hoje.getMonth() - 1);
+    }
+
+    // Formatar para YYYY-MM-DD (formato aceito pelo input date)
+    const format = (d) => d.toISOString().split('T')[0];
+
+    document.getElementById('dataInicio').value = format(dataInicio);
+    document.getElementById('dataFim').value = format(hoje);
+
+    // Dispara a busca automaticamente
+    fetchData();
+}
 function renderSummary(data) {
     const total = data.reduce((s, d) => s + (d.total_pendentes || 0), 0);
     const pge   = data.filter(d => d.instancia.startsWith('PGE')).reduce((s,d) => s + (d.total_pendentes||0), 0);
