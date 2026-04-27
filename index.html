@@ -470,7 +470,11 @@
 </div>
 
 <script>
-const API_BASE   = (window.API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
+//const API_BASE   = (window.API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
+
+const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+    ? 'http://127.0.0.1:8000'
+    : '';
 const AUTO_REFRESH_MS = 5 * 60 * 1000; 
 
 let rawData      = [];
