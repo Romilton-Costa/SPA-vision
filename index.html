@@ -686,8 +686,8 @@ async function openDetails(prefix, name) {
     body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
     bg.classList.add('open');
 
-    const inicio = document.getElementById('dataInicio').value;
-    const fim    = document.getElementById('dataFim').value;
+    const inicio = document.getElementById('dataInicio')?.value || '';
+    const fim    = document.getElementById('dataFim')?.value    || '';
 
     let url = `${API_BASE}/processos/detalhes/${prefix}`;
     const params = [];
