@@ -495,9 +495,16 @@ let refreshTimer = null;
 let nextRefreshAt = null;
 
 function saveDates() {
-    const i = document.getElementById('dataInicio').value;
-    const f = document.getElementById('dataFim').value;
-    try { sessionStorage.setItem('spa_inicio', i); sessionStorage.setItem('spa_fim', f); } catch(_) {}
+    const startEl = document.getElementById('dataInicio');
+    const endEl = document.getElementById('dataFim');
+
+    // Só tenta salvar se os elementos existirem na tela
+    if (startEl && endEl) {
+        try { 
+            sessionStorage.setItem('spa_inicio', startEl.value); 
+            sessionStorage.setItem('spa_fim', endEl.value); 
+        } catch(_) {}
+    }
 }
 
 function loadDates() {
@@ -514,10 +521,14 @@ function clearDates() {
     fetchData();
 }
 
-async function fetchData() {
+async function fetchData(manualInicio = null, manualFim = null) {
     saveDates();
-    const inicio = document.getElementById('dataInicio').value;
-    const fim    = document.getElementById('dataFim').value;
+
+    const inicio = manualInicio || document.getElementById('dataInicio')?.value || '';
+    const fim    = manualFim    || document.getElementById('dataFim')?.value    || '';
+
+    //const inicio = document.getElementById('dataInicio').value;
+   // const fim    = document.getElementById('dataFim').value;
 
     let url = `${API_BASE}/processos/resumo?t=${Date.now()}`;
     if (inicio) url += `&dataInicio=${inicio}`;
@@ -559,23 +570,29 @@ function setPeriod(periodo) {
     const hoje = new Date();
     let dataInicio = new Date();
     
-    // Ajuste da data de início conforme o período
-    if (periodo === 'hoje') {
-        // dataInicio já é hoje
-    } else if (periodo === 'semana') {
+    if (periodo === 'semana') {
         dataInicio.setDate(hoje.getDate() - 7);
     } else if (periodo === 'mes') {
         dataInicio.setMonth(hoje.getMonth() - 1);
     }
 
-    // Formatar para YYYY-MM-DD (formato aceito pelo input date)
     const format = (d) => d.toISOString().split('T')[0];
+    
+    const startValue = format(dataInicio);
+    const endValue = format(hoje);
 
-    document.getElementById('dataInicio').value = format(dataInicio);
-    document.getElementById('dataFim').value = format(hoje);
+    // Tenta atualizar os campos se eles existirem
+    const startEl = document.getElementById('dataInicio');
+    const endEl = document.getElementById('dataFim');
 
-    // Dispara a busca automaticamente
-    fetchData();
+    if (startEl && endEl) {
+        startEl.value = startValue;
+        endEl.value = endValue;
+    }
+
+    // Chama a busca passando as datas diretamente, 
+    // garantindo que funcione mesmo sem os elementos na tela
+    fetchData(startValue, endValue);
 }
 function renderSummary(data) {
     const total = data.reduce((s, d) => s + (d.total_pendentes || 0), 0);
