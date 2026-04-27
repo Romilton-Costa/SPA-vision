@@ -39,3 +39,4 @@ urllib3==2.6.3
 uvicorn==0.45.0
 virtualenv==21.2.4
 wrapt==2.1.2
+mangum==0.17.0
