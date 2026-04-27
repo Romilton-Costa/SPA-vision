@@ -286,7 +286,7 @@ if __name__ == "__main__":
 # O Mangum adapta o ASGI (FastAPI) para o formato AWS Lambda / Vercel serverless
 try:
     from mangum import Mangum
-    handler = Mangum(app, lifespan="off")
+    handler = Mangum(app, lifespan="on")
 except ImportError:
     pass  # Não está rodando na Vercel
     
