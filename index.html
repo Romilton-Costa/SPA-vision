@@ -688,58 +688,65 @@ async function openDetails(prefix, name) {
     const bg   = document.getElementById('modalBg');
     const body = document.getElementById('modalBody');
     const titleEl = document.getElementById('modalTitle');
-    const subEl   = document.getElementById('modalSub');
 
-    // 1. Limpeza e Loading
+    // 1. Verificação inicial (essencial para TV)
+    if (!bg || !body) return;
+
     titleEl.textContent = name;
-    subEl.textContent = "A carregar...";
-    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">A consultar Metabase...</div>';
+    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
     bg.classList.add('open');
 
-    // 2. Captura de Datas Segura (resolve o erro do .value)
-    // Tenta pegar do input, se não existir tenta do sessionStorage (salvo pelos botões), se não, vazio.
-    const inicio = document.getElementById('dataInicio')?.value || sessionStorage.getItem('spa_inicio') || '';
-    const fim    = document.getElementById('dataFim')?.value    || sessionStorage.getItem('spa_fim') || '';
+    // 2. Captura de Datas de forma compatível com navegadores antigos (sem usar ?.value direto)
+    var sEl = document.getElementById('dataInicio');
+    var eEl = document.getElementById('dataFim');
+    
+    // Se o elemento existe, pega o valor; senão, tenta pegar do que foi salvo na sessão
+    var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
+    var fim    = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
 
-    // 3. Montagem da URL
-    let url = `${API_BASE}/processos/detalhes/${prefix}?t=${Date.now()}`;
-    if (inicio) url += `&dataInicio=${inicio}`;
-    if (fim)    url += `&dataFim=${fim}`;
+    // 3. Montagem da URL com "cache bust" para forçar a TV a buscar dados novos
+    var url = API_BASE + '/processos/detalhes/' + prefix + '?t=' + new Date().getTime();
+    if (inicio) url += '&dataInicio=' + inicio;
+    if (fim)    url += '&dataFim=' + fim;
 
     try {
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`Erro HTTP: ${res.status}`);
         
+        // Se a TV der erro 429 ou 500
+        if (!res.ok) {
+            throw new Error("Erro ao consultar dados (" + res.status + ")");
+        }
+
         const result = await res.json();
 
-        // Atualiza o subtítulo com info de cache e total
-        subEl.textContent = `${result.total.toLocaleString('pt-BR')} processo(s) · ${result.cached ? '⚡ cache' : '🔄 ao vivo'}`;
-
         if (!result.processos || result.processos.length === 0) {
-            body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Nenhum processo encontrado para este período.</p>';
+            body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Nenhum processo encontrado.</p>';
             return;
         }
 
-        // 4. Construção da Tabela
+        // 4. Filtro e Ordem das Colunas
         const allCols = Object.keys(result.processos[0]);
-        const cols = allCols.filter(c => c !== 'content'); // Remove coluna pesada
+        const cols = allCols.filter(function(c) { return c !== 'content'; });
 
         const priority = ['judicial_process_number','failure_message','available_at','procedure_id','created_at'];
-        const ordered  = [...priority.filter(c => cols.includes(c)), ...cols.filter(c => !priority.includes(c))];
+        const ordered  = priority.filter(function(c) { return cols.indexOf(c) !== -1; })
+                         .concat(cols.filter(function(c) { return priority.indexOf(c) === -1; }));
 
-        let html = `<div class="table-wrap"><table><thead><tr>`;
-        ordered.forEach(c => { html += `<th>${c.replace(/_/g,' ')}</th>`; });
-        html += `</tr></thead><tbody>`;
+        // 5. Construção do HTML (Tabela)
+        let html = '<div class="table-wrap"><table><thead><tr>';
+        ordered.forEach(function(c) { 
+            html += '<th>' + c.replace(/_/g,' ') + '</th>'; 
+        });
+        html += '</tr></thead><tbody>';
 
-        result.processos.forEach(p => {
+        result.processos.forEach(function(p) {
             html += '<tr>';
-            ordered.forEach(c => {
-                const v = p[c] ?? '—';
+            ordered.forEach(function(c) {
+                const v = p[c] !== null && p[c] !== undefined ? p[c] : '—';
                 let cls = '';
                 if (c === 'failure_message') cls = ' class="err-msg"';
                 if (c === 'judicial_process_number') cls = ' class="num"';
-                
-                html += `<td${cls}>${v}</td>`;
+                html += '<td' + cls + '>' + v + '</td>';
             });
             html += '</tr>';
         });
@@ -748,8 +755,7 @@ async function openDetails(prefix, name) {
         body.innerHTML = html;
 
     } catch (err) {
-        console.error(err);
-        body.innerHTML = `<p style="color:var(--red);text-align:center;padding:40px">Erro ao carregar detalhes: ${err.message}</p>`;
+        body.innerHTML = '<p style="color:var(--red);text-align:center;padding:40px">Erro: ' + err.message + '</p>';
     }
 }
 
