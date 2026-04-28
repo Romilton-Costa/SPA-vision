@@ -210,15 +210,33 @@ def process(
 
 
 # ─── DATA CACHE KEY ──────────────────────────────────────────────────────────
-def _cache_key(data_inicio: Optional[str], data_fim: Optional[str]) -> str:
-    return f"{data_inicio or ''}_{data_fim or ''}"
+
+ #def _cache_key(data_inicio: Optional[str], data_fim: Optional[str]) -> str:
+  #  return f"{data_inicio or ''}_{data_fim or ''}"
 
 
-def get_cached(
-    data_inicio: Optional[str] = None,
-    data_fim: Optional[str] = None,
-) -> Optional[List[Dict]]:
-    key = _cache_key(data_inicio, data_fim)
+#def get_cached(
+  #  data_inicio: Optional[str] = None,
+   # data_fim: Optional[str] = None,
+#) -> Optional[List[Dict]]:
+    #key = _cache_key(data_inicio, data_fim)
+    #with _DATA_CACHE_LOCK:
+     #   entry = _DATA_CACHE.get(key)
+    #    if entry and (time.time() - entry["time"] < DATA_CACHE_TTL):
+   #         age = int(time.time() - entry["time"])
+  #          logger.info(f"[CACHE HIT] key={key} age={age}s")
+ #           return entry["data"]
+#    return None
+def _cache_key(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> str:
+    """Gera uma chave única baseada nas datas para evitar resultados repetidos."""
+    # Se a data for None ou vazia, usamos 'default' para a chave
+    s = data_inicio if data_inicio else "default"
+    e = data_fim if data_fim else "default"
+    return f"data_resumo_{s}_{e}"
+
+def get_cached(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> Optional[List[Dict]]:
+    # CORREÇÃO: Agora passamos as datas para a função da chave
+    key = _cache_key(data_inicio, data_fim) 
     with _DATA_CACHE_LOCK:
         entry = _DATA_CACHE.get(key)
         if entry and (time.time() - entry["time"] < DATA_CACHE_TTL):
@@ -226,7 +244,6 @@ def get_cached(
             logger.info(f"[CACHE HIT] key={key} age={age}s")
             return entry["data"]
     return None
-
 
 def set_cached(
     data: List[Dict],
@@ -249,7 +266,7 @@ def invalidate_cache() -> None:
 def collect_all(
     data_inicio: Optional[str] = None,
     data_fim: Optional[str] = None,
-    max_workers: int = 6,
+    max_workers: int = 12,
     use_cache: bool = True,
 ) -> List[Dict[str, Any]]:
     """
