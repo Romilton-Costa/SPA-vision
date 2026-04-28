@@ -61,7 +61,7 @@ _TOKEN_TTL = 300  # 5 min
 # ─── DATA CACHE (resultado das queries, 1h) ──────────────────────────────────
 _DATA_CACHE: Dict[str, Dict[str, Any]] = {}
 _DATA_CACHE_LOCK = threading.Lock()
-DATA_CACHE_TTL = int(os.getenv("DATA_CACHE_TTL_SECONDS", 3600))  # padrão: 1h
+DATA_CACHE_TTL = int(os.getenv("DATA_CACHE_TTL_SECONDS", 1800))  # padrão: 1h
 
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
