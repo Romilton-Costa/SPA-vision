@@ -191,33 +191,23 @@
         /* ── GRID DE CARDS ── */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill,minimax(150px, 1fr)); 
+            grid-template-columns: repeat(7, 1fr); 
             gap: 12px; 
-            padding:10px;
+            margin-bottom: 32px;
             width: 100%;
         }
-       @media (min-width: 768px) and (max-width: 1024px) {
-    .grid {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    }
-}
+       
 
-/* Força pelo menos 2 colunas em telas muito pequenas (mobile), se desejar */
-@media (max-width: 480px) {
-    .grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-}
+
         .card {
         background: var(--surface);
         border-radius: 12px;
-        padding: clamp(10px, 2vh, 20px); /* Padding dinâmico baseado na altura da tela */
+        padding: 12px;/* Padding dinâmico baseado na altura da tela */
         border-left: 4px solid var(--accent); 
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        min-height: 140px; /* Garante que o card não fique "achatado" */
+        min-height: 110px; /* Garante que o card não fique "achatado" */
         transition: transform .15s;
 }
 
