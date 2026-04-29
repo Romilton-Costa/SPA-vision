@@ -454,15 +454,7 @@
     </div>
 
     <div class="toolbar">
-        <!--
-        <div class="date-group">
-            <label>Data início</label>
-            <input type="date" id="dataInicio">
-        </div>
-        <div class="date-group">
-            <label>Data fim</label>
-            <input type="date" id="dataFim">
-        </div>-->
+       
         <div class="date-group">
         <label>Períodos</label>
         <div style="display: flex; gap: 4px;">
@@ -478,19 +470,11 @@
         <button class="btn" data-filter="PGM" onclick="setFilter('PGM', this)">PGM</button>
     </div>
 </div>
-<!--
-<div class="summary-bar">
-    <div class="summary-card"><div class="label">Total Pendentes</div><div class="value" id="sumTotal">—</div></div>
-    <div class="summary-card pge"><div class="label">PGE (Estados)</div><div class="value" id="sumPGE">—</div></div>
-    <div class="summary-card pgm"><div class="label">PGM (Municípios)</div><div class="value" id="sumPGM">—</div></div> 
-</div>-->
+
 
 <div class="grid" id="grid"></div>
 
-<!--<div class="chart-wrap">
-    <h2>Distribuição por Instância</h2>
-    <canvas id="chart" height="120"></canvas>
-</div>-->
+
 
 <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
     <div class="modal" id="modal">
@@ -502,7 +486,7 @@
 </div>
 
 <script>
-//const API_BASE   = (window.API_BASE || 'http://127.0.0.1:8000').replace(/\/$/, '');
+
 
 const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
     ? 'http://127.0.0.1:8000'
@@ -559,7 +543,7 @@ async function fetchData(manualStart = null, manualEnd = null) {
 
         const res = await fetch(url);
         
-        // Se receber erro 429, avisa o utilizador de forma amigável
+        
         if (res.status === 429) {
             toast("Muitas requisições. Aguarde 1 minuto.", "error");
             showLoading(false);
@@ -587,7 +571,7 @@ function renderAll() {
 
    // renderSummary(filtered);
     renderGrid(filtered);
-    //renderChart(filtered);
+    
 }
 
 function setPeriod(periodo, element) {
