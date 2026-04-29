@@ -42,14 +42,14 @@
             margin-bottom: 32px;
         }
 
-        .header-left h1 {
+        .header-left h3 {
             font-size: 26px; 
             font-weight: 700;
             color: var(--text);
         }
 
         .header-left .subtitle {
-            font-size: 13px;
+            font-size: 16px;
             color: var(--muted);
             margin-top: 4px;
         }
@@ -200,6 +200,7 @@
 
 
         .card {
+        position: relative;
         background: var(--surface);
         border-radius: 12px;
         padding: 12px;/* Padding dinâmico baseado na altura da tela */
@@ -282,7 +283,10 @@
             background: var(--green);
         }
 
-        .card .status-dot.error { background: var(--red); }
+        .card .status-dot.error {   
+             background: var(--red) !important;
+             box-shadow: 0 0 8px var(--red);
+             animation: none; }
         .card .status-dot.no_config { background: var(--border); }
 
         /* ── LOADING OVERLAY ── */
@@ -469,7 +473,47 @@
 .btn-icon:hover::after {
     opacity: 1;
 }
+/* Estilo do Botão Principal (Atualizar) */
+.btn-primary {
+    background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+    color: #0f172a; /* Texto escuro para contraste no fundo azul */
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
+/* Efeito ao passar o rato ou focar com o comando da TV */
+.btn-primary:hover, .btn-primary:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+    filter: brightness(1.1);
+    outline: none;
+}
+
+/* Efeito visual quando o botão é clicado */
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+}
+
+/* Estilo para quando o botão estiver desativado (durante o loading) */
+.btn-primary:disabled {
+    background: var(--border);
+    color: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 /* Quando estiver em Fullscreen, o fundo da página tem de ser forçado */
 :fullscreen body {
     background-color: var(--bg);
@@ -517,10 +561,14 @@
 
 <div class="header">
     <div class="header-left">
-        <h1>Monitoramento de Expedientes</h1>
+        <div id="digitalClock" style="font-size: 20px; font-weight: 700; color: var(--accent); margin: 8px 0; font-family: monospace;">00:00:00</div>
+        <h3>Monitoramento de Expedientes</h3>
         <div class="subtitle">Processos pendentes de notificação · SPA</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
         <div id="cacheBadge"><span class="dot"></span><span id="cacheLabel">Aguardando dados...</span></div>
+        <div id="lastFetch" style="font-size: 11px; color: var(--muted);">Última busca: --:--:--</div>
         <div id="nextRefresh"></div>
+    </div>
     </div>
 
     <div class="toolbar">
@@ -530,7 +578,13 @@
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
         </svg>
     </button>
-   
+   <button onclick="fetchData()" class="btn-primary" id="btnRefresh">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+    </svg>
+    Atualizar
+</button>
 </div>
         <div class="date-group">
         
@@ -565,8 +619,18 @@
 <script>
 
 
+function updateDigitalClock() {
+    const el = document.getElementById('digitalClock');
+    if (!el) return;
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('pt-BR');
+}
+// Inicia o relógio e atualiza a cada segundo
+setInterval(updateDigitalClock, 1000);
+updateDigitalClock();
+
 const API_BASE = '';
-const AUTO_REFRESH_MS = 1200000;
+const AUTO_REFRESH_MS = 600000;
 
 let rawData      = [];
 let activeFilter = 'ALL';
@@ -603,6 +667,8 @@ function clearDates() {
 async function fetchData(manualStart = null, manualEnd = null) {
     saveDates();
     showLoading(true);
+   const btn = document.getElementById('btnRefresh');
+    if(btn) btn.disabled = true;
 
     const sEl = document.getElementById('dataInicio');
     const eEl = document.getElementById('dataFim');
@@ -629,10 +695,17 @@ async function fetchData(manualStart = null, manualEnd = null) {
         rawData = data;
         renderAll();
         updateCacheBadge(data.some(d => d.cached));
+        const now = new Date();
+        const lastFetchEl = document.getElementById('lastFetch');
+        if (lastFetchEl) {
+            lastFetchEl.textContent = `Última busca: ${now.toLocaleTimeString('pt-BR')}`;
+        }
+
     } catch (err) {
         toast("Erro ao carregar dados", "error");
         console.error(err);
     } finally {
+        if(btn) btn.disabled = false;
         showLoading(false);
         scheduleNextRefresh();
     }

@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"[STARTUP WARN] Falha na carga inicial: {e}")
 
     # Agenda recarga a cada 1h
-    scheduler.add_job(_scheduled_refresh, "interval", minutes=20, id="refresh_job")
+    scheduler.add_job(_scheduled_refresh, "interval", minutes=10, id="refresh_job")
     scheduler.start()
     logger.info("[SCHEDULER] Agendado: recarga a cada 1 hora.")
 
