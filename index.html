@@ -421,14 +421,18 @@
     padding: 10px;
     border-radius: 8px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     outline: none;
 }
-
+.toolbar-actions {
+    display: flex;
+    align-items: center; /* Centraliza verticalmente todos os botões */
+    gap: 12px;
+}
 /* Efeito Hover (Rato ou Foco do Comando da TV) */
 .btn-icon:hover, .btn-icon:focus {
     background: rgba(56, 189, 248, 0.1);
