@@ -191,21 +191,27 @@
         /* ── GRID DE CARDS ── */
         .grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr); 
-            gap: 12px; 
+            grid-template-columns: repeat(autofit,minimax(180px, 1fr)); 
+            gap: 15px; 
             margin-bottom: 32px;
+            width: 100%;
         }
-
+        @media (min-width: 2000px) {
+            .grid {
+                grid-template-columns: repeat(8, 1fr); 
+            }
+        }
         .card {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 15px; 
-            border-left: 4px solid var(--accent); 
-            cursor: pointer;
-            transition: transform .15s, box-shadow .15s;
-            position: relative;
-            min-height: 120px;
-        }
+        background: var(--surface);
+        border-radius: 12px;
+        padding: clamp(10px, 2vh, 20px); /* Padding dinâmico baseado na altura da tela */
+        border-left: 4px solid var(--accent); 
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 140px; /* Garante que o card não fique "achatado" */
+        transition: transform .15s;
+}
 
         .card:hover {
             transform: translateY(-4px);
@@ -246,7 +252,7 @@
         .card.PGM .tag { background: rgba(74,222,128,.15); color: var(--green); }
 
         .card .name {
-            font-size: 18px; 
+            font-size: clamp(12px, 1vw, 16px); 
             font-weight: 600;
             color: var(--text);
             margin-bottom: 4px;
@@ -254,7 +260,7 @@
         }
 
         .card .count {
-            font-size: 32px; 
+            font-size: clamp(24px, 3vw, 42px); 
             font-weight: 700;
             color: var(--red);
             line-height: 1;
