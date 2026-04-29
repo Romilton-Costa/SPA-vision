@@ -408,11 +408,66 @@
             word-break: break-word;
         }
 
-        .btn-icon:focus {
+       /* Estilo Base do Botão de Ícone */
+.btn-icon {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
     outline: none;
+}
+
+/* Efeito Hover (Rato ou Foco do Comando da TV) */
+.btn-icon:hover, .btn-icon:focus {
+    background: rgba(56, 189, 248, 0.1);
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
-    background: var(--border);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Estado Ativo (Quando clicado) */
+.btn-icon:active {
+    transform: translateY(0);
+}
+
+/* Estilização quando o Dashboard ESTÁ em Fullscreen */
+:fullscreen .btn-icon {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+/* Tooltip simples para o botão (opcional) */
+.btn-icon::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    border: 1px solid var(--border);
+    z-index: 100;
+}
+
+.btn-icon:hover::after {
+    opacity: 1;
 }
 
 /* Quando estiver em Fullscreen, o fundo da página tem de ser forçado */
