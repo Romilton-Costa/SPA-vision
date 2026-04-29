@@ -191,19 +191,20 @@
         /* ── GRID DE CARDS ── */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
-            gap: 24px; 
+            grid-template-columns: repeat(8, 1fr); 
+            gap: 12px; 
             margin-bottom: 32px;
         }
 
         .card {
             background: var(--surface);
             border-radius: 12px;
-            padding: 30px; 
-            border-left: 5px solid var(--accent); 
+            padding: 15px; 
+            border-left: 4px solid var(--accent); 
             cursor: pointer;
             transition: transform .15s, box-shadow .15s;
             position: relative;
+            min-height: 120px;
         }
 
         .card:hover {
@@ -213,8 +214,23 @@
 
         .card.PGE { border-color: var(--green); }
         .card.PGM { border-color: var(--green); }
-        .card.error { border-color: var(--red); opacity: .7; }
-
+        .card.error { 
+            border-color: var(--red); 
+            opacity: .7;
+            background: rgba(248, 113, 113, 0.05);
+         }
+    .card .error-text {
+        color: var(--red);
+        font-size: 11px;
+        margin-top: 8px;
+        font-weight: 500;
+        line-height: 1.3;
+        display: block;
+    }
+    .status-dot.error { 
+        background: var(--red); 
+        box-shadow: 0 0 8px var(--red);
+}
         .card .tag {
             display: inline-block;
             font-size: 10px;
@@ -233,12 +249,12 @@
             font-size: 18px; 
             font-weight: 600;
             color: var(--text);
-            margin-bottom: 12px;
-            line-height: 1.3;
+            margin-bottom: 4px;
+            line-height: .8;
         }
 
         .card .count {
-            font-size: 48px; 
+            font-size: 32px; 
             font-weight: 700;
             color: var(--red);
             line-height: 1;
@@ -491,7 +507,7 @@
 const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
     ? 'http://127.0.0.1:8000'
     : '';
-const AUTO_REFRESH_MS = 1800000;
+const AUTO_REFRESH_MS = 1200000;
 
 let rawData      = [];
 let activeFilter = 'ALL';
@@ -559,6 +575,7 @@ async function fetchData(manualStart = null, manualEnd = null) {
         console.error(err);
     } finally {
         showLoading(false);
+        scheduleNextRefresh();
     }
 }
 
@@ -628,17 +645,23 @@ function renderGrid(data) {
         const type = item.instancia.startsWith('PGE') ? 'PGE' : 'PGM';
         const isErr = item.status !== 'ok';
         const count = item.total_pendentes || 0;
+        
+        // Pega a mensagem de erro caso exista, senão usa um texto padrão
+        const errorMessage = item.error_message || "Erro na conexão com Metabase";
 
         const card = document.createElement('div');
+        // Adiciona a classe 'error' se o status não for ok
         card.className = `card ${type} ${isErr ? 'error' : ''}`;
         card.onclick = () => openDetails(item.prefixo, item.instancia);
 
         card.innerHTML = `
-            <span class="tag">${type}</span>
-            <div class="status-dot ${item.status === 'ok' ? '' : item.status}"></div>
+            <div class="status-dot ${item.status === 'ok' ? '' : 'error'}"></div>
             <div class="name">${item.instancia}</div>
-            <div class="count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
-            <div class="count-label">pendente${count !== 1 ? 's' : ''} não cadastrado${count !== 1 ? 's' : ''}</div>
+            ${isErr ? 
+                `<div class="error-text">⚠️ ${errorMessage}</div>` : 
+                `<div class="count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
+                 <div class="count-label">pendente${count !== 1 ? 's' : ''} não cadastrado${count !== 1 ? 's' : ''}</div>`
+            }
         `;
 
         grid.appendChild(card);
