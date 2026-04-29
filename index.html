@@ -408,6 +408,17 @@
             word-break: break-word;
         }
 
+        .btn-icon:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
+    background: var(--border);
+}
+
+/* Quando estiver em Fullscreen, o fundo da página tem de ser forçado */
+:fullscreen body {
+    background-color: var(--bg);
+}
         .num { font-weight: 600; color: var(--text); }
 
         #nextRefresh {
@@ -458,7 +469,14 @@
     </div>
 
     <div class="toolbar">
-       
+       <div class="toolbar-actions">
+    <button onclick="toggleFullScreen()" class="btn-icon" id="fullscreenBtn" title="Alternar Ecrã Inteiro">
+        <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>
+    </button>
+    <button onclick="fetchData()" class="btn-primary">Atualizar</button>
+</div>
         <div class="date-group">
         <label>Períodos</label>
         <div style="display: flex; gap: 4px;">
@@ -606,6 +624,35 @@ function setPeriod(periodo, element) {
         fetchData(sStr, eStr); // Passa os valores diretamente
     }
 }
+function toggleFullScreen() {
+    const icon = document.getElementById('fullscreenIcon');
+    
+    if (!document.fullscreenElement) {
+        // ENTRAR NO MODO TELA CHEIA
+        document.documentElement.requestFullscreen().then(() => {
+            // Muda o ícone para "Sair do Ecrã Inteiro"
+            icon.innerHTML = '<path d="M4 14h3v3m0-10V4H4m16 3h-3V4m0 13v3h3"></path>'; 
+        }).catch(err => {
+            console.log(`Erro: ${err.message}`);
+        });
+    } else {
+        // SAIR DO MODO TELA CHEIA
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+            // Volta o ícone para "Entrar em Ecrã Inteiro"
+            icon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+        }
+    }
+}
+
+// Ouvinte de evento para o caso de usares o botão "Voltar" do comando da TV
+document.addEventListener('fullscreenchange', () => {
+    const icon = document.getElementById('fullscreenIcon');
+    if (!document.fullscreenElement) {
+        // Garante que o ícone volta ao normal se saíres pelo comando
+        icon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+    }
+});
 function renderSummary(data) {
     const total = data.reduce((s, d) => s + (d.total_pendentes || 0), 0);
     const pge   = data.filter(d => d.instancia.startsWith('PGE')).reduce((s,d) => s + (d.total_pendentes||0), 0);
