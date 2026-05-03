@@ -1,17 +1,18 @@
 # main.py (ou errbit_service.py)
 from datetime import datetime, timedelta
 import re
+import os
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
-
+from dotenv import load_dotenv
 
 router = APIRouter()
 
-BASE_URL_ERRBIT = "https://errbit.coreplan.com.br"
-LOGIN_ERRBIT = "moacir.holanda@coreplan.com.br"
-PASSWORD_ERRBIT = "Core@2025"
+BASE_URL_ERRBIT = os.getenv("BASE_URL_ERRBIT")
+LOGIN_ERRBIT = os.getenv("LOGIN_ERRBIT")
+PASSWORD_ERRBIT = os.getenv("PASSWORD_ERRBIT")
 
 # Lista de APPS fornecida[cite: 8]
 APPS = {
