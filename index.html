@@ -269,7 +269,7 @@
         .card .count.zero { color: var(--green); }
 
         .card .count-label {
-            font-size: 12px;
+            font-size: 14px;
             color: var(--muted);
             margin-top: 4px;
         }
@@ -412,6 +412,47 @@
             max-width: 350px;
             word-break: break-word;
         }
+
+    .card-tribunal {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        padding: 15px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.2s;
+    }
+
+    .card-tribunal:hover {
+        transform: translateY(-3px);
+    }
+
+    .tribunal-info .name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status-200 {
+        background: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+        border: 1px solid #28a745;
+    }
+
+    .status-error {
+        background: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+        border: 1px solid #dc3545;
+    }
 
        /* Estilo Base do Botão de Ícone */
 .btn-icon {
@@ -557,6 +598,77 @@
             .header { flex-direction: column; }
             .summary-card { min-width: 100%; }
         }
+
+        .errbit-container {
+    padding: 20px;
+    background-color: #1a1d21; /* Fundo escuro para destacar */
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+.section-title {
+    color: #ff4d4d;
+    font-size: 1.25rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.error-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.error-card {
+    background: #252930;
+    border-left: 4px solid #ff4d4d;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.error-card:hover {
+    transform: translateY(-5px);
+}
+
+.error-card h3 {
+    color: #f8f9fa;
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+}
+
+.error-date {
+    color: #8892b0;
+    font-size: 0.8rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.error-message {
+    color: #ffb3b3;
+    background: rgba(255, 77, 77, 0.1);
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: 'Consolas', monospace;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.error-link {
+    display: inline-block;
+    margin-top: 12px;
+    color: #4da6ff;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.error-link:hover {
+    text-decoration: underline;
+}
     </style>
 </head>
 <body>
@@ -621,6 +733,18 @@
     </div>
 </div>
 
+<section id="errbit-section" style="display: none; padding: 20px; background: #1a1d21; border-radius: 12px; margin: 20px;">
+    <h2 style="color: #ff4d4d; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        ⚠️ Erros Críticos de Expedientes (Hoje)
+    </h2>
+    <div id="errbit-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+        <!-- Os cards serão inseridos aqui pelo JavaScript -->
+    </div>
+</section>
+<!-- Seção de Status de Tribunais -->
+<div id="tribunaisStatus" style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
+    <!-- Os status aparecerão aqui automaticamente -->
+</div>
 <script>
 
 
@@ -634,7 +758,10 @@ function updateDigitalClock() {
 setInterval(updateDigitalClock, 1000);
 updateDigitalClock();
 
-const API_BASE = '';
+//const API_BASE = '';
+const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+    ? 'http://127.0.0.1:8000'
+    : '';
 const AUTO_REFRESH_MS = 600000;
 
 let rawData      = [];
@@ -705,6 +832,8 @@ async function fetchData(manualStart = null, manualEnd = null) {
         if (lastFetchEl) {
             lastFetchEl.textContent = `Última busca: ${now.toLocaleTimeString('pt-BR')}`;
         }
+        checkTribunaisStatus();
+        checkErrbitErrors();
 
     } catch (err) {
         toast("Erro ao carregar dados", "error");
@@ -715,6 +844,81 @@ async function fetchData(manualStart = null, manualEnd = null) {
         scheduleNextRefresh();
     }
 }
+
+async function checkErrbitErrors() {
+    const section = document.getElementById('errbit-section');
+    const list = document.getElementById('errbit-list');
+
+    if (!section || !list) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/errbit/expedientes`);
+        if (!res.ok) throw new Error("Erro na API");
+        const data = await res.json();
+        
+        // Use consistentemente o nome da variável
+        const listaDeErros = data.errors || [];
+
+        if (listaDeErros.length > 0) { // Corrigido de 'errors' para 'listaDeErros'
+            section.style.display = 'block';
+            list.innerHTML = '';
+            listaDeErros.forEach(erro => {
+                const card = `
+                    <div style="background: #252930; border-left: 4px solid #ff4d4d; padding: 16px; border-radius: 8px; color: #fff; margin-bottom: 10px;">
+                        <h3 style="color: #ff4d4d; margin: 0 0 5px 0;">${erro.app_name}</h3>
+                        <small style="color: #8892b0;">${erro.occ_at}</small>
+                    <div style="color: #e06c75; font-weight: bold; font-size: 0.95rem; margin-bottom: 10px;">
+                ${erro.title}
+            </div>
+                        <div style="margin: 10px 0; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 0.9rem;">
+                            ${erro.message}
+                        </div>
+                        <a href="${erro.link}" target="_blank" style="color: #4da6ff; text-decoration: none; font-size: 0.8rem;">Ver no Errbit →</a>
+                    </div>
+                `;
+                list.innerHTML += card;
+            });
+        } else {
+            section.style.display = 'none';
+        }
+    } catch (error) {
+        console.error("Erro na requisição Errbit:", error);
+        section.style.display = 'none';
+    }
+}
+      
+
+async function checkTribunaisStatus() {
+    const container = document.getElementById("tribunaisStatus");
+    if (!container) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/status/tribunais`);
+        const data = await res.json();
+        
+        if (!Array.isArray(data)) {
+            console.error("Backend não retornou uma lista:", data);
+            return;
+        }
+
+
+        container.innerHTML = ''; // Limpa a área
+
+        data.forEach(trib => {
+            const isOk = trib.status === 'OK';
+            container.innerHTML += `
+                <div style="background: var(--surface); padding: 10px 15px; border-radius: 8px; border-left: 4px solid ${isOk ? 'var(--green)' : 'var(--red)'}; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 13px; font-weight: 600;">${trib.nome}</span>
+                    <span style="color: ${isOk ? 'var(--green)' : 'var(--red)'}; font-size: 12px; font-weight: 700;">
+                        ${isOk ? '● ONLINE' : '● FORA DO AR'}
+                    </span>
+                </div>
+            `;
+        });
+    } catch (err) {
+        console.error("Erro ao checar tribunais:", err);
+    }
+}
+    
 
 function renderAll() {
     const filtered = rawData.filter(d => {
@@ -1017,6 +1221,7 @@ function toast(msg, type = 'info') {
 
 loadDates();
 fetchData();
+document.addEventListener('DOMContentLoaded', checkErrbitErrors);
 </script>
 </body>
 </html>
