@@ -9,6 +9,7 @@ Melhorias:
   - Compatível com Vercel (via Mangum) e execução local
 """
 from mangum import Mangum
+from crawler import SPACrawler
 import os
 import logging
 import re
@@ -24,7 +25,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.background import BackgroundScheduler
-
+from crawler import SPACrawler
+from errbit_service import router as errbit_router
 import collector
 
 # ─── LOGGING ────────────────────────────────────────────────────────────────
@@ -52,8 +54,11 @@ def _scheduled_refresh():
         logger.error(f"[SCHEDULER ERROR] {e}")
 
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+
     # Carga inicial ao subir
     logger.info("[STARTUP] Pré-carregando dados...")
     try:
@@ -97,7 +102,32 @@ app.add_middleware(
 
 # ─── MODELOS ─────────────────────────────────────────────────────────────────
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
+app.include_router(errbit_router)
+# No main.py
+@app.get("/api/status/tribunais")
+def get_tribunais_status():
+    crawler = SPACrawler()
+    # Lista de tribunais para monitorar (pode ser movida para o .env futuramente)
+    tribunais = [
+        {"id": os.getenv("INT_TRT2_ID", "10"), "nome": "TRT 2 Grau"},
+        # Exemplo de como adicionar outros futuramente:
+        # {"id": "11", "nome": "TRT 15 Grau"},
+    ]
+    
+    resultados = []
+    try:
+        crawler.authenticate()
+        for trib in tribunais:
+            # Reutiliza a lógica do crawler para cada ID
+            status_code, _ = crawler.test_movements(soap_id=trib["id"])
+            resultados.append({
+                "nome": trib["nome"],
+                "status": "OK" if status_code == 200 else "ERRO",
+                "code": status_code
+            })
+        return resultados
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 def _validate_date(v: Optional[str]) -> Optional[str]:
     if v is None:
@@ -142,6 +172,7 @@ def _parse_dates(
 @app.get("/health", tags=["infra"])
 def health():
     return {"status": "ok", "scheduler": scheduler.running}
+
 
 
 # ─── CONFIGURAÇÃO DE CAMINHOS ───────────────────────────────────────────────
@@ -290,4 +321,3 @@ try:
 except ImportError:
     pass  # Não está rodando na Vercel
     
-handler = Mangum(app)
