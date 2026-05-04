@@ -971,7 +971,13 @@ async function checkErrbitErrors() {
     if (!section || !list) return;
     try {
         const res = await fetch(`${API_BASE}/api/errbit/expedientes`);
-        if (!res.ok) throw new Error("Erro na API");
+         const contentType = res.headers.get("content-type");
+        if (!res.ok || !contentType || !contentType.includes("application/json")) {
+            console.warn("API Errbit indisponível ou retornando HTML.");
+            section.style.display = 'none';
+            return; 
+        }      
+
         const data = await res.json();
         
         const listaDeErros = data.errors || [];
