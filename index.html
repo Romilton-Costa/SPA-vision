@@ -192,14 +192,125 @@
         /* ── GRID DE CARDS ── */
         .grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr); 
-            gap: 12px; 
-            margin-bottom: 32px;
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+           overflow-y: auto;
             width: 100%;
+            /*flex:3;*/ /*ocupa mais espaço que o errbit */
         }
-       
+       .main-container {
+            display: grid;
+            grid-template-columns: 1fr 350px; /* Esquerda: Expedientes | Direita: Errbit lateral */
+            gap: 20px;
+            align-items: start;
+            height: calc(100vh - 180px);
+        }
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+}
+/* Ajuste na seção Errbit para ser lateral */
+/*#errbit-section {  flex: 1;margin-top: 0 !important; min-width: 320px;position: sticky;top: 40px;}*/
 
+#errbit-section {
+    background: rgba(248, 113, 113, 0.05);
+    border-radius: 12px;
+    padding: 15px;
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    height: 100%;
+    overflow-y: auto;
+}
+#errbit-list {
+   display: flex;
+    flex-direction: column; /* Um abaixo do outro para economizar largura */
+    gap: 10px;
+}
+.error-card-mini {
+    background: #1e293b;
+    border-left: 3px solid #ff4d4d;
+    padding: 10px;
+    border-radius: 6px;
+}
 
+.error-card-mini h3 {
+   font-size: 12px;
+    color: #ff4d4d;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.error-card-mini .err-msg-small {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.3;
+    /* Limita a 2 linhas de texto */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.main-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* Grid de Expedientes: Exatamente 3 por linha */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); 
+    gap: 16px; 
+    margin-bottom: 24px;
+}
+
+/* Seção Errbit: Layout de 2 colunas e Cards Compactos */
+#errbit-section {
+    padding: 15px;
+    background: rgba(248, 113, 113, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(248, 113, 113, 0.1);
+}
+
+#errbit-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 2 cards por linha */
+    gap: 12px;
+}
+
+/* Estilo do Card Errbit Reduzido */
+.error-card-small {
+    background: #1e293b;
+    border-left: 3px solid #ff4d4d;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: transform 0.2s;
+}
+
+.error-card-small:hover {
+    transform: scale(1.01);
+}
+
+.error-card-small h4 {
+    color: #ff4d4d;
+    margin: 0 0 4px 0;
+    font-size: 0.9rem;
+}
+
+.error-card-small .err-msg {
+    color: #cbd5e1;
+    background: rgba(0,0,0,0.2);
+    padding: 6px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-family: monospace;
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* Mantém o card baixo */
+}
         .card {
         position: relative;
         background: var(--surface);
@@ -718,6 +829,8 @@
         <button class="btn" data-filter="PGM" onclick="setFilter('PGM', this)">PGM</button>
     </div>
 </div>
+<div class="main-layout">
+
 
 
 <div class="grid" id="grid"></div>
@@ -732,19 +845,25 @@
         <div id="modalBody"><div style="color:var(--muted);text-align:center;padding:40px">Carregando...</div></div>
     </div>
 </div>
+ 
 
-<section id="errbit-section" style="display: none; padding: 20px; background: #1a1d21; border-radius: 12px; margin: 20px;">
-    <h2 style="color: #ff4d4d; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-        ⚠️ Erros Críticos de Expedientes (Hoje)
-    </h2>
-    <div id="errbit-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-        <!-- Os cards serão inseridos aqui pelo JavaScript -->
-    </div>
-</section>
-<!-- Seção de Status de Tribunais -->
-<div id="tribunaisStatus" style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
-    <!-- Os status aparecerão aqui automaticamente -->
+    <section id="errbit-section" style="display: none;">
+        <h2 style="color: #ff4d4d; font-size: 14px; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px;">
+            ⚠️ Erros Críticos (Hoje)
+        </h2>
+        <div id="errbit-list"></div>
+    </section>
+
+
 </div>
+
+
+
+
+<!-- Seção de Status de Tribunais 
+<div id="tribunaisStatus" style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
+    Os status aparecerão aqui automaticamente 
+</div>-->
 <script>
 
 
@@ -855,24 +974,21 @@ async function checkErrbitErrors() {
         if (!res.ok) throw new Error("Erro na API");
         const data = await res.json();
         
-        // Use consistentemente o nome da variável
         const listaDeErros = data.errors || [];
 
-        if (listaDeErros.length > 0) { // Corrigido de 'errors' para 'listaDeErros'
+        if (listaDeErros.length > 0) {
             section.style.display = 'block';
             list.innerHTML = '';
             listaDeErros.forEach(erro => {
                 const card = `
-                    <div style="background: #252930; border-left: 4px solid #ff4d4d; padding: 16px; border-radius: 8px; color: #fff; margin-bottom: 10px;">
-                        <h3 style="color: #ff4d4d; margin: 0 0 5px 0;">${erro.app_name}</h3>
-                        <small style="color: #8892b0;">${erro.occ_at}</small>
-                    <div style="color: #e06c75; font-weight: bold; font-size: 0.95rem; margin-bottom: 10px;">
-                ${erro.title}
-            </div>
-                        <div style="margin: 10px 0; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 0.9rem;">
-                            ${erro.message}
+                    <div class="error-card-small">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4>${erro.app_name}</h4>
+                            <small style="color: #64748b; font-size: 10px;">${erro.occ_at}</small>
                         </div>
-                        <a href="${erro.link}" target="_blank" style="color: #4da6ff; text-decoration: none; font-size: 0.8rem;">Ver no Errbit →</a>
+                        <div style="font-weight: 600; color: #f1f5f9; margin-top: 4px;">${erro.title}</div>
+                        <div class="err-msg">${erro.message}</div>
+                        <a href="${erro.link}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11px; font-weight: 500;">VER DETALHES →</a>
                     </div>
                 `;
                 list.innerHTML += card;
@@ -881,7 +997,7 @@ async function checkErrbitErrors() {
             section.style.display = 'none';
         }
     } catch (error) {
-        console.error("Erro na requisição Errbit:", error);
+        console.error("Erro Errbit:", error);
         section.style.display = 'none';
     }
 }
