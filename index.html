@@ -973,10 +973,10 @@ async function checkErrbitErrors() {
         const res = await fetch(`${API_BASE}/api/errbit/expedientes`);
          const contentType = res.headers.get("content-type");
         if (!res.ok || !contentType || !contentType.includes("application/json")) {
-            console.warn("API Errbit indisponível ou retornando HTML.");
+            console.warn("API Errbit indisponível ou retornando HTML (404/500).");
             section.style.display = 'none';
             return; 
-        }      
+        }    
 
         const data = await res.json();
         
