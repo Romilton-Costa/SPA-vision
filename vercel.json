@@ -11,13 +11,10 @@
     }
   ],
   "routes": [
-    {
-      "src": "/processos/(.*)",
-      "dest": "main.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+    { "src": "/api/(.*)", "dest": "main.py" },
+  { "src": "/processos/(.*)", "dest": "main.py" },
+  { "src": "/cache/(.*)", "dest": "main.py" },
+  { "src": "/health", "dest": "main.py" },
+  { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
