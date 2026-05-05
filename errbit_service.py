@@ -266,7 +266,7 @@ async def get_expedientes_errors():
                     is_recent = any(date_str in occ_at for date_str in recent_dates)
                     
                     if is_recent:
-                        detail = extract_errbit_detail(session, a.get("href"))
+                        
                         all_errors.append({
                             "app_name": name, # Ajustado para bater com seu JS
                             "title": detail["title"],
