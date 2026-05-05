@@ -953,7 +953,7 @@ async function fetchData(manualStart = null, manualEnd = null) {
         checkErrbitErrors();
 
     } catch (err) {
-        toast("Erro ao carregar dados", "error");
+        toast("Falha de autenticação", "error");
         console.error(err);
     } finally {
         if(btn) btn.disabled = false;
