@@ -1,13 +1,4 @@
-"""
-main.py — API FastAPI para o painel SPA Processos Pendentes
-Melhorias:
-  - Scheduler interno (APScheduler) que recarrega dados a cada 1h
-  - Rate limiting por IP (slowapi)
-  - Validação de parâmetros de data
-  - CORS configurável por variável de ambiente
-  - Endpoint /cache/refresh para forçar recarga manual
-  - Compatível com Vercel (via Mangum) e execução local
-"""
+
 from mangum import Mangum
 from crawler import SPACrawler
 import os
@@ -109,7 +100,8 @@ def get_tribunais_status():
     crawler = SPACrawler()
     # Lista de tribunais para monitorar (pode ser movida para o .env futuramente)
     tribunais = [
-        {"id": os.getenv("INT_TRT2_ID", "10"), "nome": "TRT 2 Grau"},
+        {"id": os.getenv("INT_TRT2_ID", "10"), "nome": "TRT5 2 Grau"},
+        
         # Exemplo de como adicionar outros futuramente:
         # {"id": "11", "nome": "TRT 15 Grau"},
     ]
