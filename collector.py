@@ -54,6 +54,17 @@ AND DATE(created_at) >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
 [[AND DATE(created_at) <= CAST({{dataFim}} AS DATE)]]
 """
 
+
+QUERY_MT="""
+SELECT *
+FROM judicial_processes_pending_notice_validations
+WHERE registered = false
+AND DATE(created_at) >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
+[[AND DATE(created_at) >= CAST({{dataInicio}} AS DATE)]]
+[[AND DATE(created_at) <= CAST({{dataFim}} AS DATE)]]
+"""
+
+
 # ─── TOKEN CACHE (por prefixo) ───────────────────────────────────────────────
 _TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
 _TOKEN_TTL = 300  # 5 min
@@ -116,6 +127,9 @@ def _run_query(
     Metabase substitui {{dataInicio}} / {{dataFim}} na query antes de
     executar — então a comparação de data precisa ser feita via CAST na SQL.
     """
+
+    #query_to_use = QUERY_MT if cfg["prefix"] == "MB5" else NATIVE_QUERY
+
     template_tags: Dict[str, Any] = {}
 
     if data_inicio:
@@ -209,24 +223,7 @@ def process(
     }
 
 
-# ─── DATA CACHE KEY ──────────────────────────────────────────────────────────
 
- #def _cache_key(data_inicio: Optional[str], data_fim: Optional[str]) -> str:
-  #  return f"{data_inicio or ''}_{data_fim or ''}"
-
-
-#def get_cached(
-  #  data_inicio: Optional[str] = None,
-   # data_fim: Optional[str] = None,
-#) -> Optional[List[Dict]]:
-    #key = _cache_key(data_inicio, data_fim)
-    #with _DATA_CACHE_LOCK:
-     #   entry = _DATA_CACHE.get(key)
-    #    if entry and (time.time() - entry["time"] < DATA_CACHE_TTL):
-   #         age = int(time.time() - entry["time"])
-  #          logger.info(f"[CACHE HIT] key={key} age={age}s")
- #           return entry["data"]
-#    return None
 def _cache_key(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> str:
     """Gera uma chave única baseada nas datas para evitar resultados repetidos."""
     # Se a data for None ou vazia, usamos 'default' para a chave
@@ -269,11 +266,8 @@ def collect_all(
     max_workers: int = 12,
     use_cache: bool = True,
 ) -> List[Dict[str, Any]]:
-    """
-    Coleta dados de todas as instâncias configuradas.
-    - Usa cache em memória (TTL configurável via DATA_CACHE_TTL_SECONDS).
-    - use_cache=False força recarga imediata (usado pelo scheduler).
-    """
+   
+
     if use_cache:
         cached = get_cached(data_inicio, data_fim)
         if cached is not None:
