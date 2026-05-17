@@ -51,7 +51,7 @@ sites = [
     "https://saj.spa.coreplan.com.br/",
     "https://santaluzia.spa.coreplan.com.br/",
     "https://aracruz.spa.coreplan.com.br/",
-    "https://cariacica.spa.coreplan.com.br/"
+    "https://cariacica.spa.coreplan.com.br/",
     "https://maceio.spa.coreplan.com.br/",
     "https://amargosa.spa.coreplan.com.br/",
     "https://ilheus.spa.coreplan.com.br/",
@@ -71,7 +71,6 @@ sites = [
     "https://goytacazes.spa.coreplan.com.br/",
     "https://niteroi.spa.coreplan.com.br/",
     "https://portovelho.spa.coreplan.com.br/",
-    "https://sergipe.spa.coreplan.com.br/"
     "https://aracatuba.spa.coreplan.com.br/",
     "https://spa.pge.mt.gov.br/"
 
