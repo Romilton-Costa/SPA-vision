@@ -1,4 +1,3 @@
-
 from mangum import Mangum
 from crawler import SPACrawler
 import os
@@ -49,18 +48,24 @@ def _scheduled_refresh():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-
-    # Carga inicial ao subir
-    logger.info("[STARTUP] Pré-carregando dados...")
+    # Carga inicial ao subir — expedientes (pode demorar, mas não inclui SSL)
+    logger.info("[STARTUP] Pré-carregando dados de expedientes...")
     try:
         collector.collect_all(use_cache=False)
     except Exception as e:
-        logger.warning(f"[STARTUP WARN] Falha na carga inicial: {e}")
+        logger.warning(f"[STARTUP WARN] Falha na carga inicial de expedientes: {e}")
 
-    # Agenda recarga a cada 1h
-    scheduler.add_job(_scheduled_refresh, "interval", minutes=10, id="refresh_job")
+    # SSL aquecido em background (não bloqueia o startup)
+    import threading
+    threading.Thread(target=collector._warm_ssl_cache, daemon=True).start()
+    logger.info("[STARTUP] Aquecimento de certificados SSL disparado em background.")
+
+    # Agenda recarga de expedientes a cada 15min
+    scheduler.add_job(_scheduled_refresh, "interval", minutes=15, id="refresh_job")
+    # Agenda recarga de SSL a cada 1h (independente)
+    scheduler.add_job(collector._warm_ssl_cache, "interval", hours=1, id="ssl_refresh_job")
     scheduler.start()
-    logger.info("[SCHEDULER] Agendado: recarga a cada 1 hora.")
+    logger.info("[SCHEDULER] Agendado: expedientes a cada 15min | SSL a cada 1h.")
 
     yield  # app rodando
 
@@ -220,7 +225,14 @@ def get_resumo(
         logger.error(f"[RESUMO ERROR] {e}")
         raise HTTPException(status_code=500, detail="Erro ao gerar resumo")
 
-
+@app.get("/api/status/certificados")
+def get_ssl_status():
+    try:
+        # threshold_days=10: mostra certificados que expiram nos próximos 10 dias
+        alertas = collector.collect_ssl_alerts(threshold_days=10)
+        return alertas
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 # ─── DETALHES ────────────────────────────────────────────────────────────────
 @app.get("/processos/detalhes/{prefix}", response_model=DetalhesResponse, tags=["processos"])
 @limiter.limit("20/minute")
@@ -273,6 +285,58 @@ def get_detalhes(
         raise HTTPException(status_code=500, detail="Erro ao buscar detalhes")
 
 
+# ─── CADASTROS EM BRANCO (MB5) ───────────────────────────────────────────────
+@app.get("/processos/blank-notices", tags=["processos"])
+@limiter.limit("30/minute")
+def get_blank_notices(
+    request: Request,
+    dates=Depends(_parse_dates),
+):
+    """Retorna resumo dos cadastros em branco detectados no MB5 (PGE Mato Grosso).
+    Sempre retorna 200 com campo 'status' — erros são representados no payload.
+    """
+    data_inicio, data_fim = dates
+    try:
+        result = collector.collect_blank_notices(data_inicio, data_fim)
+        return {
+            "instancia": result["name"],
+            "prefixo": result["prefix"],
+            "status": result["status"],
+            "total": result["total"],
+            "error_message": result.get("error_message"),
+        }
+    except Exception as e:
+        logger.error(f"[BLANK NOTICES ERROR] {e}")
+        return {
+            "instancia": "PGE Mato Grosso",
+            "prefixo": "MB5",
+            "status": "error",
+            "total": 0,
+            "error_message": str(e),
+        }
+
+
+@app.get("/processos/blank-notices/detalhes", tags=["processos"])
+@limiter.limit("20/minute")
+def get_blank_notices_detalhes(
+    request: Request,
+    dates=Depends(_parse_dates),
+):
+    """Retorna a lista completa de cadastros em branco do MB5 para exibição no modal."""
+    data_inicio, data_fim = dates
+    try:
+        result = collector.collect_blank_notices(data_inicio, data_fim)
+        return {
+            "instancia": result["name"],
+            "status": result["status"],
+            "total": result["total"],
+            "processos": result["records"],
+        }
+    except Exception as e:
+        logger.error(f"[BLANK NOTICES DETALHES ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar detalhes dos cadastros em branco")
+
+
 # ─── FORÇAR REFRESH DO CACHE ─────────────────────────────────────────────────
 @app.get("/cache/refresh", response_model=CacheStatus, tags=["infra"])
 @limiter.limit("5/minute")
@@ -312,4 +376,3 @@ try:
     handler = Mangum(app, lifespan="on")
 except ImportError:
     pass  # Não está rodando na Vercel
-    

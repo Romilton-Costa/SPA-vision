@@ -3,8 +3,10 @@ collector.py — Coleta dados dos Metabases configurados no .env
 - Fix: template-tags agora usa o formato correto para queries nativas com [[AND ...]]
 - Cache em memória com TTL de 1h por instância
 - Thread pool para coleta paralela
+- Cache SSL independente (TTL 1h, verificação assíncrona)
+- TTL separado de 20min para MB5 (Mato Grosso)
 """
-
+from searchcertify import verificar_certificado, sites
 import requests
 import pandas as pd
 import os
@@ -65,25 +67,58 @@ AND DATE(created_at) >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
 """
 
 
+# ─── QUERY CADASTROS EM BRANCO (MB5 apenas) ─────────────────────────────────
+# Identifica expedientes cadastrados em branco: validações sem uma notificação
+# cadastrada correspondente (LEFT JOIN retorna NULL no lado direito).
+QUERY_MB5_BLANK = """
+SELECT DISTINCT "judicial_processes_pending_notice_validations".*
+FROM "judicial_processes_pending_notice_validations"
+LEFT OUTER JOIN "judicial_processes_pending_notices"
+  ON "judicial_processes_pending_notices"."id" = "judicial_processes_pending_notice_validations"."judicial_processes_pending_notice_id"
+WHERE "judicial_processes_pending_notices"."id" IS NULL
+AND DATE("judicial_processes_pending_notice_validations"."created_at") >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
+[[AND DATE("judicial_processes_pending_notice_validations"."created_at") >= CAST({{dataInicio}} AS DATE)]]
+[[AND DATE("judicial_processes_pending_notice_validations"."created_at") <= CAST({{dataFim}} AS DATE)]]
+"""
+
+
 # ─── TOKEN CACHE (por prefixo) ───────────────────────────────────────────────
 _TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
 _TOKEN_TTL = 300  # 5 min
 
-# ─── DATA CACHE (resultado das queries, 1h) ──────────────────────────────────
+# ─── DATA CACHE (resultado das queries) ──────────────────────────────────────
 _DATA_CACHE: Dict[str, Dict[str, Any]] = {}
 _DATA_CACHE_LOCK = threading.Lock()
-DATA_CACHE_TTL = int(os.getenv("DATA_CACHE_TTL_SECONDS", 600))  # padrão: 1h
+DATA_CACHE_TTL = int(os.getenv("DATA_CACHE_TTL_SECONDS", 600))      # padrão: 10min
+DATA_CACHE_TTL_MB5 = int(os.getenv("MB5_CACHE_TTL_SECONDS", 1200))  # MB5: 20min fixo
+
+# ─── SSL CACHE (verificações de certificado, TTL 1h) ─────────────────────────
+_SSL_CACHE: Dict[str, Any] = {"data": None, "time": 0}
+_SSL_CACHE_LOCK = threading.Lock()
+SSL_CACHE_TTL = int(os.getenv("SSL_CACHE_TTL_SECONDS", 3600))  # 1h
 
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 def get_config(prefix: str) -> Dict[str, Any]:
+    # MB5 sempre usa database 2
+    if prefix == "MB5":
+        db_id = 2
+    else:
+        # Outros clientes usam o DB do .env
+        raw_db = os.getenv(f"{prefix}_DB")
+
+        try:
+            db_id = int(raw_db) if raw_db else 1
+        except (ValueError, TypeError):
+            db_id = 1
+
     return {
         "prefix": prefix,
         "name": os.getenv(f"{prefix}_NAME", prefix),
         "url": os.getenv(f"{prefix}_URL", "").rstrip("/"),
         "username": os.getenv(f"{prefix}_USERNAME", ""),
         "password": os.getenv(f"{prefix}_PASSWORD", ""),
-        "database": int(os.getenv(f"{prefix}_DB", 2)),
+        "database": db_id,
     }
 
 
@@ -93,6 +128,7 @@ def get_all_prefixes() -> List[str]:
 
 # ─── AUTH ────────────────────────────────────────────────────────────────────
 def _authenticate(cfg: Dict[str, Any]) -> Optional[str]:
+  
     cache = _TOKEN_CACHE.get(cfg["prefix"])
     if cache and (time.time() - cache["time"] < _TOKEN_TTL):
         return cache["token"]
@@ -128,7 +164,7 @@ def _run_query(
     executar — então a comparação de data precisa ser feita via CAST na SQL.
     """
 
-    #query_to_use = QUERY_MT if cfg["prefix"] == "MB5" else NATIVE_QUERY
+    query_to_use = QUERY_MT if cfg["prefix"] == "MB5" else NATIVE_QUERY
 
     template_tags: Dict[str, Any] = {}
 
@@ -140,7 +176,7 @@ def _run_query(
     payload = {
         "type": "native",
         "native": {
-            "query": NATIVE_QUERY,
+            "query": query_to_use,
             "template-tags": {
                 # Declara os parâmetros possíveis para o Metabase reconhecer
                 "dataInicio": {
@@ -167,7 +203,10 @@ def _run_query(
         ],
     }
 
-    logger.info(f"[QUERY] {cfg['name']} | dataInicio={data_inicio} | dataFim={data_fim}")
+    logger.info(
+    f"[QUERY] {cfg['name']} | db={cfg['database']} "
+    f"| dataInicio={data_inicio} | dataFim={data_fim}"
+)
 
     for attempt in range(3):
         try:
@@ -233,7 +272,7 @@ def _cache_key(data_inicio: Optional[str] = None, data_fim: Optional[str] = None
 
 def get_cached(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> Optional[List[Dict]]:
     # CORREÇÃO: Agora passamos as datas para a função da chave
-    key = _cache_key(data_inicio, data_fim) 
+    key = _cache_key(data_inicio, data_fim)
     with _DATA_CACHE_LOCK:
         entry = _DATA_CACHE.get(key)
         if entry and (time.time() - entry["time"] < DATA_CACHE_TTL):
@@ -241,6 +280,29 @@ def get_cached(data_inicio: Optional[str] = None, data_fim: Optional[str] = None
             logger.info(f"[CACHE HIT] key={key} age={age}s")
             return entry["data"]
     return None
+
+
+def get_cached_mb5(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> Optional[Dict]:
+    """Cache exclusivo para MB5 com TTL de 20 minutos."""
+    key = f"mb5_blank_{data_inicio or 'default'}_{data_fim or 'default'}"
+    with _DATA_CACHE_LOCK:
+        entry = _DATA_CACHE.get(key)
+        if entry and (time.time() - entry["time"] < DATA_CACHE_TTL_MB5):
+            age = int(time.time() - entry["time"])
+            logger.info(f"[MB5 CACHE HIT] key={key} age={age}s")
+            return entry["data"]
+    return None
+
+
+def set_cached_mb5(
+    data: Dict,
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+) -> None:
+    key = f"mb5_blank_{data_inicio or 'default'}_{data_fim or 'default'}"
+    with _DATA_CACHE_LOCK:
+        _DATA_CACHE[key] = {"data": data, "time": time.time()}
+    logger.info(f"[MB5 CACHE SET] key={key}")
 
 def set_cached(
     data: List[Dict],
@@ -257,6 +319,114 @@ def invalidate_cache() -> None:
     with _DATA_CACHE_LOCK:
         _DATA_CACHE.clear()
     logger.info("[CACHE] Cache invalidado")
+
+
+# ─── COLLECT BLANK NOTICES (MB5) ────────────────────────────────────────────
+def collect_blank_notices(
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Executa a query de cadastros em branco exclusivamente para MB5.
+    Cache TTL: 20 minutos (independente do cache principal).
+    Sempre retorna um dict com 'status' mesmo em caso de erro.
+    """
+    # ── Tenta cache MB5 primeiro ──────────────────────────────────────────────
+    cached = get_cached_mb5(data_inicio, data_fim)
+    if cached is not None:
+        logger.info("[MB5 BLANK] Servido do cache (20min TTL)")
+        return cached
+
+    cfg = get_config("MB5")
+    if not all([cfg["url"], cfg["username"], cfg["password"]]):
+        result = {"prefix": "MB5", "name": cfg["name"], "status": "no_config",
+                  "total": 0, "records": [], "error_message": "Configuração ausente"}
+        set_cached_mb5(result, data_inicio, data_fim)
+        return result
+
+    token = _authenticate(cfg)
+    if not token:
+        result = {"prefix": "MB5", "name": cfg["name"], "status": "auth_error",
+                  "total": 0, "records": [], "error_message": "Falha na autenticação com Metabase"}
+        # Não armazena em cache erros de auth (pode ser transitório)
+        return result
+
+    template_tags: Dict[str, Any] = {}
+    if data_inicio:
+        template_tags["dataInicio"] = {"type": "text", "value": data_inicio}
+    if data_fim:
+        template_tags["dataFim"] = {"type": "text", "value": data_fim}
+
+    payload = {
+        "type": "native",
+        "native": {
+            "query": QUERY_MB5_BLANK,
+            "template-tags": {
+                "dataInicio": {
+                    "id": "dataInicio", "name": "dataInicio",
+                    "display-name": "Data Início", "type": "text", "required": False,
+                },
+                "dataFim": {
+                    "id": "dataFim", "name": "dataFim",
+                    "display-name": "Data Fim", "type": "text", "required": False,
+                },
+            },
+        },
+        "database": cfg["database"],
+        "parameters": [
+            {"type": "text", "target": ["variable", ["template-tag", k]], "value": v["value"]}
+            for k, v in template_tags.items()
+        ],
+    }
+
+    logger.info(f"[BLANK NOTICES] MB5 | dataInicio={data_inicio} | dataFim={data_fim}")
+    for attempt in range(3):
+        try:
+            resp = _session.post(
+                f"{cfg['url']}/api/dataset",
+                json=payload,
+                headers={"X-Metabase-Session": token},
+                timeout=45,
+            )
+            if resp.status_code not in (200, 202):
+                logger.error(f"[BLANK NOTICES HTTP {resp.status_code}] {resp.text[:400]}")
+                result = {"prefix": "MB5", "name": cfg["name"], "status": "query_error",
+                          "total": 0, "records": [],
+                          "error_message": f"Metabase retornou HTTP {resp.status_code}"}
+                set_cached_mb5(result, data_inicio, data_fim)
+                return result
+
+            data = resp.json().get("data", {})
+            rows = data.get("rows", [])
+            cols = data.get("cols", [])
+
+            if not rows:
+                logger.info("[BLANK NOTICES] MB5 — 0 registros em branco")
+                result = {"prefix": "MB5", "name": cfg["name"], "status": "ok",
+                          "total": 0, "records": []}
+                set_cached_mb5(result, data_inicio, data_fim)
+                return result
+
+            columns = [c["name"] for c in cols]
+            df = pd.DataFrame(rows, columns=columns)
+            records = df.to_dict(orient="records")
+            logger.info(f"[BLANK NOTICES] MB5 → {len(records)} registros")
+            result = {"prefix": "MB5", "name": cfg["name"], "status": "ok",
+                      "total": len(records), "records": records}
+            set_cached_mb5(result, data_inicio, data_fim)
+            return result
+
+        except Exception as e:
+            logger.warning(f"[BLANK NOTICES RETRY {attempt + 1}] MB5 → {e}")
+            time.sleep(2 ** attempt)
+
+    result = {"prefix": "MB5", "name": cfg["name"], "status": "query_error",
+              "total": 0, "records": [],
+              "error_message": "Timeout ou falha após 3 tentativas"}
+    # Armazena erro por 2min para não sobrecarregar o Metabase
+    with _DATA_CACHE_LOCK:
+        key = f"mb5_blank_{data_inicio or 'default'}_{data_fim or 'default'}"
+        _DATA_CACHE[key] = {"data": result, "time": time.time() - DATA_CACHE_TTL_MB5 + 120}
+    return result
 
 
 # ─── COLLECT ALL ─────────────────────────────────────────────────────────────
@@ -299,3 +469,77 @@ def collect_all(
 
     set_cached(serializable, data_inicio, data_fim)
     return serializable
+
+def _warm_ssl_cache() -> None:
+    """Aquece o cache SSL em background — chamado no startup sem bloquear."""
+    logger.info("[SSL] Iniciando verificação de certificados em background...")
+    try:
+        result = _fetch_ssl_alerts_fresh(threshold_days=10)
+        with _SSL_CACHE_LOCK:
+            _SSL_CACHE["data"] = result
+            _SSL_CACHE["time"] = time.time()
+        logger.info(f"[SSL] Cache aquecido: {len(result)} alerta(s) encontrado(s).")
+    except Exception as e:
+        logger.error(f"[SSL WARM] Erro ao aquecer cache: {e}")
+
+
+def _fetch_ssl_alerts_fresh(threshold_days: int = 10) -> List[Dict[str, Any]]:
+    """Verifica todos os sites em paralelo (ThreadPool) e retorna alertas."""
+    alertas: List[Dict[str, Any]] = []
+
+    def _check(url: str) -> Optional[Dict[str, Any]]:
+        try:
+            info = verificar_certificado(url)
+            # Sempre retorna, o filtro é feito depois
+            return {
+                "host": info["host"],
+                "dias_restantes": info["dias_restantes"],
+                "validade": info["validade"].strftime("%d/%m/%Y"),
+            }
+        except Exception as e:
+            logger.warning(f"[SSL CHECK] Falha em {url}: {e}")
+            return None
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = {pool.submit(_check, url): url for url in sites}
+        for future in as_completed(futures):
+            res = future.result()
+            if res and res["dias_restantes"] <= threshold_days:
+                alertas.append(res)
+
+    # Ordena pelos que estão mais perto de expirar
+    alertas.sort(key=lambda x: x["dias_restantes"])
+    return alertas
+
+
+def collect_ssl_alerts(threshold_days: int = 10) -> List[Dict[str, Any]]:
+    """Retorna alertas de certificados usando cache em memória (TTL 1h).
+    A verificação real nunca bloqueia a requisição — serve do cache e,
+    se expirado, dispara refresh em background e retorna o dado anterior.
+    """
+    with _SSL_CACHE_LOCK:
+        cached_data = _SSL_CACHE.get("data")
+        cached_time = _SSL_CACHE.get("time", 0)
+        age = time.time() - cached_time
+
+    if cached_data is not None and age < SSL_CACHE_TTL:
+        logger.info(f"[SSL] Cache hit (age={int(age)}s)")
+        return cached_data
+
+    if cached_data is not None:
+        # Cache expirou → refresh em background, retorna dado anterior imediatamente
+        logger.info("[SSL] Cache expirado — disparando refresh em background")
+        threading.Thread(target=_warm_ssl_cache, daemon=True).start()
+        return cached_data
+
+    # Primeira chamada: sem cache ainda — bloqueia mas com timeout curto por site
+    logger.info("[SSL] Primeira carga — buscando certificados...")
+    try:
+        result = _fetch_ssl_alerts_fresh(threshold_days=threshold_days)
+        with _SSL_CACHE_LOCK:
+            _SSL_CACHE["data"] = result
+            _SSL_CACHE["time"] = time.time()
+        return result
+    except Exception as e:
+        logger.error(f"[SSL] Erro na carga inicial: {e}")
+        return []
