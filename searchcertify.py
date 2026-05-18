@@ -72,7 +72,20 @@ sites = [
     "https://niteroi.spa.coreplan.com.br/",
     "https://portovelho.spa.coreplan.com.br/",
     "https://aracatuba.spa.coreplan.com.br/",
-    "https://spa.pge.mt.gov.br/"
+    "https://spa.pge.mt.gov.br/",
+    "https://curvelo.spa.coreplan.com.br/",
+    "https://joaopessoa.spa.coreplan.com.br/",
+    "http://juizdefora.spa.coreplan.com.br/",
+    "https://lucasdorioverde.spa.coreplan.com.br/",
+    "https://cagepa.spa.coreplan.com.br/",
+    "https://pbprev.spa.coreplan.com.br/",
+    "https://uepb.spa.coreplan.com.br/",
+    "https://paraiba.spa.coreplan.com.br/",
+    "https://camaragibe.spa.coreplan.com.br/",
+    "https://jaboatao.spa.coreplan.com.br/",
+    "https://sergipe.spa.coreplan.com.br/"
+
+
 
 
 ]
