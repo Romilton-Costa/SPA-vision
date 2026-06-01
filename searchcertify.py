@@ -83,7 +83,8 @@ sites = [
     "https://paraiba.spa.coreplan.com.br/",
     "https://camaragibe.spa.coreplan.com.br/",
     "https://jaboatao.spa.coreplan.com.br/",
-    "https://sergipe.spa.coreplan.com.br/"
+    "https://sergipe.spa.coreplan.com.br/",
+    "https://spa.pgm.cuiaba.mt.gov.br/"
 
 
 
