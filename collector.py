@@ -71,12 +71,19 @@ AND DATE(created_at) >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
 # Identifica expedientes cadastrados em branco: validações sem uma notificação
 # cadastrada correspondente (LEFT JOIN retorna NULL no lado direito).
 QUERY_MB5_BLANK = """
-SELECT DISTINCT "judicial_processes_pending_notice_validations".*
+SELECT DISTINCT
+    "judicial_processes_pending_notice_validations".*
 FROM "judicial_processes_pending_notice_validations"
 LEFT OUTER JOIN "judicial_processes_pending_notices"
-  ON "judicial_processes_pending_notices"."id" = "judicial_processes_pending_notice_validations"."judicial_processes_pending_notice_id"
-WHERE "judicial_processes_pending_notices"."id" IS NULL
-AND DATE("judicial_processes_pending_notice_validations"."created_at") >= COALESCE(CAST({{dataInicio}} AS DATE), '2026-04-01')
+    ON "judicial_processes_pending_notices"."id" =
+       "judicial_processes_pending_notice_validations"."judicial_processes_pending_notice_id"
+WHERE
+    "judicial_processes_pending_notices"."id" IS NULL
+    AND "judicial_processes_pending_notice_validations"."registered" = TRUE
+    AND DATE("judicial_processes_pending_notice_validations"."created_at") >= COALESCE(
+        CAST({{dataInicio}} AS DATE),
+        '2026-05-01'
+    )
 [[AND DATE("judicial_processes_pending_notice_validations"."created_at") >= CAST({{dataInicio}} AS DATE)]]
 [[AND DATE("judicial_processes_pending_notice_validations"."created_at") <= CAST({{dataFim}} AS DATE)]]
 """
