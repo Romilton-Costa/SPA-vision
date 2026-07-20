@@ -316,24 +316,65 @@ def get_blank_notices(
         }
 
 
-@app.get("/processos/blank-notices/detalhes", tags=["processos"])
-@limiter.limit("20/minute")
-def get_blank_notices_detalhes(
+
+# ─── CADASTROS EM BRANCO — TODOS OS CLIENTES (exceto MB5) ───────────────────
+@app.get("/processos/blank-notices/todos", tags=["processos"])
+@limiter.limit("30/minute")
+def get_blank_notices_todos(
     request: Request,
     dates=Depends(_parse_dates),
 ):
-    """Retorna a lista completa de cadastros em branco do MB5 para exibição no modal."""
+    """Retorna o resumo de cadastros em branco para TODOS os clientes configurados,
+    exceto o MB5 (que possui endpoint próprio em /processos/blank-notices).
+    Sempre retorna 200 — erros por cliente são representados no item da lista.
+    """
     data_inicio, data_fim = dates
     try:
-        result = collector.collect_blank_notices(data_inicio, data_fim)
+        results = collector.collect_blank_notices_todos_clientes(data_inicio, data_fim)
+        return [
+            {
+                "instancia": r["name"],
+                "prefixo": r["prefix"],
+                "status": r["status"],
+                "total": r["total"],
+                "error_message": r.get("error_message"),
+            }
+            for r in results
+        ]
+    except Exception as e:
+        logger.error(f"[BLANK ALL ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Erro ao gerar resumo de cadastros em branco")
+
+
+@app.get("/processos/blank-notices/todos/{prefix}", tags=["processos"])
+@limiter.limit("20/minute")
+def get_blank_notices_todos_detalhes(
+    request: Request,
+    prefix: str,
+    dates=Depends(_parse_dates),
+):
+    """Retorna a lista completa de cadastros em branco de UM cliente específico
+    (exceto MB5), usada pelo modal de detalhes do frontend."""
+    data_inicio, data_fim = dates
+
+    # Sanitiza prefix (mesmo padrão usado em /processos/detalhes/{prefix})
+    prefix = re.sub(r"[^A-Z0-9_]", "", prefix.upper())
+    if not prefix or prefix == "MB5":
+        raise HTTPException(status_code=400, detail="Prefixo inválido")
+
+    try:
+        result = collector.get_blank_notices_client(prefix, data_inicio, data_fim)
         return {
             "instancia": result["name"],
+            "prefixo": result["prefix"],
             "status": result["status"],
             "total": result["total"],
             "processos": result["records"],
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"[BLANK NOTICES DETALHES ERROR] {e}")
+        logger.error(f"[BLANK ALL DETALHES ERROR] {prefix} → {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar detalhes dos cadastros em branco")
 
 

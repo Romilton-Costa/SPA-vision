@@ -89,6 +89,25 @@ WHERE
 """
 
 
+# ─── QUERY CADASTROS EM BRANCO (todos os clientes, exceto MB5) ──────────────
+# Mesma lógica de QUERY_MB5_BLANK, mantida como constante independente para
+# não acoplar a nova funcionalidade multi-cliente à query exclusiva do MB5.
+QUERY_BLANK_NOTICES_TODOS_CLIENTES = """
+SELECT DISTINCT
+    judicial_processes_pending_notice_validations.*
+FROM judicial_processes_pending_notice_validations
+LEFT OUTER JOIN judicial_processes_pending_notices
+    ON judicial_processes_pending_notices.id =
+       judicial_processes_pending_notice_validations.judicial_processes_pending_notice_id
+WHERE
+    judicial_processes_pending_notices.id IS NULL
+    AND judicial_processes_pending_notice_validations.registered = TRUE
+    AND DATE(judicial_processes_pending_notice_validations.created_at)
+        BETWEEN COALESCE(CAST({{dataInicio}} AS DATE), CURRENT_DATE - 5)
+        AND COALESCE(CAST({{dataFim}} AS DATE), CURRENT_DATE)
+"""
+
+
 # ─── TOKEN CACHE (por prefixo) ───────────────────────────────────────────────
 _TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
 _TOKEN_TTL = 300  # 5 min
@@ -269,6 +288,92 @@ def process(
     }
 
 
+# ─── PROCESS BLANK NOTICES (um cliente qualquer, exceto MB5) ────────────────
+def _process_blank_notices_client(
+    cfg: Dict[str, Any],
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Executa a query de cadastros em branco (QUERY_BLANK_NOTICES_TODOS_CLIENTES)
+    para um único cliente. Não deve ser usada para MB5 — MB5 tem fluxo próprio
+    em collect_blank_notices()/process (cache dedicado de 20min).
+    """
+    if not all([cfg["url"], cfg["username"], cfg["password"]]):
+        return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "no_config",
+                "total": 0, "records": [], "error_message": "Configuração ausente"}
+
+    token = _authenticate(cfg)
+    if not token:
+        return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "auth_error",
+                "total": 0, "records": [], "error_message": "Falha na autenticação com Metabase"}
+
+    template_tags: Dict[str, Any] = {}
+    if data_inicio:
+        template_tags["dataInicio"] = {"type": "text", "value": data_inicio}
+    if data_fim:
+        template_tags["dataFim"] = {"type": "text", "value": data_fim}
+
+    payload = {
+        "type": "native",
+        "native": {
+            "query": QUERY_BLANK_NOTICES_TODOS_CLIENTES,
+            "template-tags": {
+                "dataInicio": {
+                    "id": "dataInicio", "name": "dataInicio",
+                    "display-name": "Data Início", "type": "text", "required": False,
+                },
+                "dataFim": {
+                    "id": "dataFim", "name": "dataFim",
+                    "display-name": "Data Fim", "type": "text", "required": False,
+                },
+            },
+        },
+        "database": cfg["database"],
+        "parameters": [
+            {"type": "text", "target": ["variable", ["template-tag", k]], "value": v["value"]}
+            for k, v in template_tags.items()
+        ],
+    }
+
+    logger.info(f"[BLANK ALL] {cfg['name']} | dataInicio={data_inicio} | dataFim={data_fim}")
+    for attempt in range(3):
+        try:
+            resp = _session.post(
+                f"{cfg['url']}/api/dataset",
+                json=payload,
+                headers={"X-Metabase-Session": token},
+                timeout=45,
+            )
+            if resp.status_code not in (200, 202):
+                logger.error(f"[BLANK ALL HTTP {resp.status_code}] {cfg['name']}: {resp.text[:400]}")
+                return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "query_error",
+                        "total": 0, "records": [],
+                        "error_message": f"Metabase retornou HTTP {resp.status_code}"}
+
+            data = resp.json().get("data", {})
+            rows = data.get("rows", [])
+            cols = data.get("cols", [])
+
+            if not rows:
+                logger.info(f"[BLANK ALL] {cfg['name']} — 0 registros em branco")
+                return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "ok",
+                        "total": 0, "records": []}
+
+            columns = [c["name"] for c in cols]
+            df = pd.DataFrame(rows, columns=columns)
+            records = df.to_dict(orient="records")
+            logger.info(f"[BLANK ALL] {cfg['name']} → {len(records)} registros")
+            return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "ok",
+                    "total": len(records), "records": records}
+
+        except Exception as e:
+            logger.warning(f"[BLANK ALL RETRY {attempt + 1}] {cfg['name']} → {e}")
+            time.sleep(2 ** attempt)
+
+    return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "query_error",
+            "total": 0, "records": [],
+            "error_message": "Timeout ou falha após 3 tentativas"}
+
 
 def _cache_key(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> str:
     """Gera uma chave única baseada nas datas para evitar resultados repetidos."""
@@ -433,6 +538,90 @@ def collect_blank_notices(
     with _DATA_CACHE_LOCK:
         key = f"mb5_blank_{data_inicio or 'default'}_{data_fim or 'default'}"
         _DATA_CACHE[key] = {"data": result, "time": time.time() - DATA_CACHE_TTL_MB5 + 120}
+    return result
+
+
+# ─── CADASTROS EM BRANCO — TODOS OS CLIENTES (exceto MB5) ───────────────────
+def _cache_key_blank_all(prefix: str, data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> str:
+    s = data_inicio if data_inicio else "default"
+    e = data_fim if data_fim else "default"
+    return f"blank_all_{prefix}_{s}_{e}"
+
+
+def collect_blank_notices_todos_clientes(
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    max_workers: int = 12,
+    use_cache: bool = True,
+) -> List[Dict[str, Any]]:
+    """Executa a query de cadastros em branco para TODOS os clientes configurados
+    em METABASES, EXCETO o MB5 (que possui fluxo próprio em collect_blank_notices,
+    com cache dedicado de 20min). Roda em paralelo (thread pool), assim como
+    collect_all. Cache por cliente, reaproveitando DATA_CACHE_TTL (10min padrão).
+    Sempre retorna uma lista de dicts com 'status', mesmo em caso de erro parcial.
+    """
+    prefixes = get_all_prefixes()
+   
+    if use_cache:
+        cached_results: List[Dict[str, Any]] = []
+        cache_complete = True
+        for p in prefixes:
+            key = _cache_key_blank_all(p, data_inicio, data_fim)
+            with _DATA_CACHE_LOCK:
+                entry = _DATA_CACHE.get(key)
+            if entry and (time.time() - entry["time"] < DATA_CACHE_TTL):
+                cached_results.append(entry["data"])
+            else:
+                cache_complete = False
+                break
+        if cache_complete and cached_results:
+            logger.info("[BLANK ALL] Servido do cache")
+            return cached_results
+
+    configs = [get_config(p) for p in prefixes]
+    results: List[Dict[str, Any]] = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_process_blank_notices_client, c, data_inicio, data_fim): c
+            for c in configs
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            logger.info(f"[BLANK ALL RESULT] {result['name']} → {result['status']}")
+            results.append(result)
+            key = _cache_key_blank_all(result["prefix"], data_inicio, data_fim)
+            with _DATA_CACHE_LOCK:
+                _DATA_CACHE[key] = {"data": result, "time": time.time()}
+
+    return results
+
+
+def get_blank_notices_client(
+    prefix: str,
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    use_cache: bool = True,
+) -> Dict[str, Any]:
+    """Retorna o resultado de cadastros em branco de um único cliente (exceto MB5),
+    incluindo os registros completos — usado pelo modal de detalhes do frontend.
+    """
+    
+
+    if use_cache:
+        key = _cache_key_blank_all(prefix, data_inicio, data_fim)
+        with _DATA_CACHE_LOCK:
+            entry = _DATA_CACHE.get(key)
+        if entry and (time.time() - entry["time"] < DATA_CACHE_TTL):
+            return entry["data"]
+
+    cfg = get_config(prefix)
+    result = _process_blank_notices_client(cfg, data_inicio, data_fim)
+
+    key = _cache_key_blank_all(prefix, data_inicio, data_fim)
+    with _DATA_CACHE_LOCK:
+        _DATA_CACHE[key] = {"data": result, "time": time.time()}
+
     return result
 
 

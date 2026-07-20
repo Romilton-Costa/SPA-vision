@@ -13,7 +13,33 @@ def limpar_host(url):
     parsed = urlparse(url)
 
     return parsed.hostname
+def obter_nome_cliente(url):
+    """
+    Extrai um nome amigável do cliente sem alterar a estrutura
+    de retorno utilizada pelo frontend.
+    """
 
+    host = limpar_host(url)
+    partes = host.split(".")
+
+    # spa.pge.mt.gov.br -> PGE MT
+    if len(partes) >= 3 and partes[0] == "spa" and partes[1] == "pge":
+        return f"PGE {partes[2].upper()}"
+
+    # spa.pgm.cuiaba.mt.gov.br -> PGM Cuiabá
+    if len(partes) >= 3 and partes[0] == "spa" and partes[1] == "pgm":
+        return f"PGM {partes[2].capitalize()}"
+
+    # pgm.vitoria.spa.coreplan.com.br -> PGM Vitória
+    if len(partes) >= 2 and partes[0] == "pgm":
+        return f"PGM {partes[1].capitalize()}"
+
+    # dividaativa.pge.es.gov.br -> Dívida Ativa ES
+    if len(partes) >= 3 and partes[0] == "dividaativa":
+        return f"Dívida Ativa {partes[2].upper()}"
+
+    # viana.spa.coreplan.com.br -> Viana
+    return partes[0].capitalize()
 
 def verificar_certificado(url):
 
@@ -41,6 +67,7 @@ def verificar_certificado(url):
 
             return {
                 "host": host,
+                "cliente": obter_nome_cliente(url),
                 "validade": validade,
                 "dias_restantes": dias_restantes
             }

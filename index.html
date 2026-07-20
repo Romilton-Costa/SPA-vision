@@ -1155,14 +1155,15 @@
                 </div>
             </div>
         </div>
-       <section id="blank-notices-section" class="blank-notices-section" style="display:none;">
+       
+       <section id="blank-notices-all-section" class="blank-notices-section" style="display:none;">
             <div class="section-header">
                 <span style="font-size:18px;">🚨</span>
                 <h2>Cadastros em Branco</h2>
                 <span style="font-size:11px; color:var(--muted); font-weight:200; margin-left:auto;"
-                    id="blankNoticesStatus"></span>
+                    id="blankNoticesAllStatus"></span>
             </div>
-            <div id="blank-notices-cards" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+            <div id="blank-notices-all-cards" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
         </section>
        <!-- Seção de certificados SSL — exibida apenas quando há alertas -->
         <section id="ssl-section" style="display:none;">
@@ -1260,17 +1261,37 @@
             if (sslSection) sslSection.style.display = 'none';
             return;
         }
+    function getClientName(host) {
+    const parts = host.split('.');
 
+    let name;
+
+    // Padrão: pgm.vitoria.spa.coreplan.com.br
+    if (parts[0] === 'pgm') {
+        name = parts[1];
+    }
+
+    // Padrão: spa.pge.ma.spa.coreplan.com.br
+    else if (parts[0] === 'spa' && parts[1] === 'pge') {
+        name = parts[2];
+    }
+
+    // Padrão antigo: amargosa.spa.coreplan.com.br
+    else {
+        name = parts[0];
+    }
+
+    return name
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
         // Monta pills na barra sticky
         pillsWrap.innerHTML = '';
         listaCertificados.forEach(cert => {
             const isCritical = cert.dias_restantes <= 7;
 
             // Extrai o nome do cliente do subdomínio (ex: "amargosa.spa.coreplan.com.br" → "Amargosa")
-            const clientName = cert.host
-                .split('.')[0]
-                .replace(/-/g, ' ')
-                .replace(/\b\w/g, c => c.toUpperCase());
+           const clientName = getClientName(cert.host);
 
             const pill = document.createElement('span');
             pill.className = `cert-pill ${isCritical ? 'critical' : 'warning'}`;
@@ -1344,6 +1365,7 @@
                 checkTribunaisStatus();
                 checkErrbitErrors();
                 fetchBlankNotices();   // TTL 20min no backend — responde rápido do cache
+                fetchBlankNoticesTodos(); // Cadastros em branco de todos os clientes (exceto MB5)
                 fetchSSLCerts();       // TTL 1h no backend — nunca bloqueia
 
             } catch (err) {
@@ -1775,6 +1797,7 @@
         fetchData();
         checkErrbitErrors();
         fetchBlankNotices();
+        fetchBlankNoticesTodos();
         fetchSSLCerts();
 
         // ─── CADASTROS EM BRANCO ────────────────────────────────────────────────────
@@ -1832,8 +1855,8 @@
                     card.innerHTML = `
                         <div class="bw-left">
                             <div class="bw-icon">🔴</div>
-                            <div class="bw-name">${data.instancia || 'PGE MT'}</div>
-                            <div class="bw-count" style="font-size:11px; color:var(--red);">${statusLabel}</div>
+                            <div class="bw-name">${_escapeHtml(data.instancia || 'PGE MT')}</div>
+                            <div class="bw-count" style="font-size:11px; color:var(--red);">${_escapeHtml(statusLabel)}</div>
                         </div>`;
                     const statusEl = document.getElementById('blankNoticesStatus');
                     if (statusEl) statusEl.textContent = '🔴 ' + statusLabel;
@@ -1841,7 +1864,7 @@
                     card.innerHTML = `
                         <div class="bw-left">
                             <div class="bw-icon">${count > 0 ? '⚠️' : '✅'}</div>
-                            <div class="bw-name">${data.instancia || 'PGE MT'}</div>
+                            <div class="bw-name">${_escapeHtml(data.instancia || 'PGE MT')}</div>
                             <div class="bw-count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
                             <div class="bw-label">em branco</div>
                         </div>`;
@@ -1906,7 +1929,7 @@
 
                 var html = '<div class="table-wrap"><table><thead><tr>';
                 for (var i = 0; i < ordered.length; i++) {
-                    html += '<th>' + ordered[i].replace(/_/g, ' ') + '</th>';
+                    html += '<th>' + _escapeHtml(ordered[i].replace(/_/g, ' ')) + '</th>';
                 }
                 html += '</tr></thead><tbody>';
                 for (var j = 0; j < result.processos.length; j++) {
@@ -1917,7 +1940,7 @@
                         var val = (p[colName] !== null && p[colName] !== undefined) ? p[colName] : '—';
                         var cls = '';
                         if (colName === 'judicial_process_number') cls = ' class="num"';
-                        html += '<td' + cls + '>' + val + '</td>';
+                        html += '<td' + cls + '>' + _escapeHtml(val) + '</td>';
                     }
                     html += '</tr>';
                 }
@@ -1929,13 +1952,195 @@
                 body.innerHTML = `
         <div style="text-align:center; padding:40px;">
             <p style="color:var(--red); font-size:18px; font-weight:bold; margin-bottom:10px;">⚠️ Falha na conexão</p>
-            <p style="color:var(--muted); font-size:14px;">${err.message}</p>
+            <p style="color:var(--muted); font-size:14px;">${_escapeHtml(err.message)}</p>
             <button class="btn" onclick="fetchData()" style="margin-top:20px;">Tentar Novamente</button>
         </div>
     `;
 
     // Também mostra o Toast (notificação flutuante que você já tem no sistema)
     toast("Erro ao carregar dados: " + err.message, "error");
+            }
+        }
+
+        // ─── CADASTROS EM BRANCO — TODOS OS CLIENTES (exceto MB5) ──────────────────
+        function _escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function fetchBlankNoticesTodos() {
+            const section = document.getElementById('blank-notices-all-section');
+            const cardsEl = document.getElementById('blank-notices-all-cards');
+            const statusEl = document.getElementById('blankNoticesAllStatus');
+
+            if (!section || !cardsEl) return;
+
+            var sEl = document.getElementById('dataInicio');
+            var eEl = document.getElementById('dataFim');
+            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
+            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
+
+            var url = API_BASE + '/processos/blank-notices/todos?t=' + Date.now();
+            if (inicio) url += '&dataInicio=' + inicio;
+            if (fim) url += '&dataFim=' + fim;
+
+            section.style.display = 'block';
+            cardsEl.innerHTML = `
+                <div class="card-blank-warning" style="cursor:default; opacity:0.45;">
+                    <div class="bw-left">
+                        <div class="bw-icon">⏳</div>
+                        <div class="bw-name">Carregando clientes...</div>
+                    </div>
+                </div>`;
+
+            try {
+                var res = await fetch(url);
+                if (res.status === 429) {
+                    if (statusEl) statusEl.textContent = '🟡 Muitas requisições, aguarde';
+                    return;
+                }
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                var lista = await res.json();
+                if (!Array.isArray(lista)) throw new Error('Resposta inválida do servidor');
+
+                cardsEl.innerHTML = '';
+
+                if (lista.length === 0) {
+                    cardsEl.innerHTML = '<div style="color:var(--muted); font-size:12px;">Nenhum cliente configurado.</div>';
+                    if (statusEl) statusEl.textContent = '';
+                    return;
+                }
+
+                var algumErro = false;
+
+                lista.forEach(function (item) {
+                    var isError = item.status && item.status !== 'ok';
+                    var count = item.total || 0;
+
+                    var card = document.createElement('div');
+                    card.className = 'card-blank-warning' + (isError ? ' error' : '');
+
+                    if (isError) {
+                        algumErro = true;
+                        card.style.borderColor = 'var(--red)';
+                        card.style.cursor = 'default';
+
+                        var statusLabel = {
+                            'no_config': '⚙️ Não configurado',
+                            'auth_error': '🔐 Falha de autenticação',
+                            'query_error': '🔴 Erro na consulta',
+                        }[item.status] || '🔴 Erro';
+
+                        card.innerHTML = `
+                            <div class="bw-left">
+                                <div class="bw-icon">🔴</div>
+                                <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
+                                <div class="bw-count" style="font-size:11px; color:var(--red);">${statusLabel}</div>
+                            </div>`;
+                    } else {
+                        card.onclick = function () {
+                            openBlankNoticesAllDetails(item.prefixo, item.instancia);
+                        };
+                        card.innerHTML = `
+                            <div class="bw-left">
+                                <div class="bw-icon">${count > 0 ? '⚠️' : '✅'}</div>
+                                <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
+                                <div class="bw-count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
+                                <div class="bw-label">em branco</div>
+                            </div>`;
+                    }
+
+                    cardsEl.appendChild(card);
+                });
+
+                if (statusEl) statusEl.textContent = algumErro ? '🟡 Alguns clientes com erro' : '';
+
+            } catch (err) {
+                console.error('[Blank Notices Todos]', err);
+                cardsEl.innerHTML = `
+                    <div class="card-blank-warning" style="cursor:default; border-color:var(--red); opacity:0.8;">
+                        <div class="bw-left">
+                            <div class="bw-icon">🔴</div>
+                            <div class="bw-name">Sem resposta</div>
+                        </div>
+                    </div>`;
+                if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
+            }
+        }
+
+        async function openBlankNoticesAllDetails(prefix, name) {
+            var bg = document.getElementById('modalBg');
+            var body = document.getElementById('modalBody');
+            var titleEl = document.getElementById('modalTitle');
+            var subEl = document.getElementById('modalSub');
+            if (!bg || !body || !prefix) return;
+
+            titleEl.textContent = (name || prefix) + ' — Cadastros em Branco';
+            if (subEl) subEl.textContent = 'A carregar...';
+            body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
+            bg.classList.add('open');
+
+            var sEl = document.getElementById('dataInicio');
+            var eEl = document.getElementById('dataFim');
+            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
+            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
+
+            var url = API_BASE + '/processos/blank-notices/todos/' + encodeURIComponent(prefix) + '?t=' + Date.now();
+            if (inicio) url += '&dataInicio=' + inicio;
+            if (fim) url += '&dataFim=' + fim;
+
+            try {
+                var res = await fetch(url);
+                if (!res.ok) throw new Error('Erro: ' + res.status);
+                var result = await res.json();
+
+                if (subEl) subEl.textContent = result.total.toLocaleString('pt-BR') + ' registro(s) encontrado(s)';
+
+                if (!result.processos || result.processos.length === 0) {
+                    body.innerHTML = '<p style="color:var(--green);text-align:center;padding:40px;font-size:16px;">✅ Nenhum cadastro em branco encontrado!</p>';
+                    return;
+                }
+
+                var allCols = Object.keys(result.processos[0]);
+                var priority = ['judicial_process_number', 'judicial_processes_pending_notice_id', 'created_at', 'id'];
+                var cols = allCols.filter(function (c) { return c !== 'content'; });
+                var ordered = priority.filter(function (c) { return cols.indexOf(c) !== -1; })
+                    .concat(cols.filter(function (c) { return priority.indexOf(c) === -1; }));
+
+                var html = '<div class="table-wrap"><table><thead><tr>';
+                for (var i = 0; i < ordered.length; i++) {
+                    html += '<th>' + _escapeHtml(ordered[i].replace(/_/g, ' ')) + '</th>';
+                }
+                html += '</tr></thead><tbody>';
+                for (var j = 0; j < result.processos.length; j++) {
+                    var p = result.processos[j];
+                    html += '<tr>';
+                    for (var k = 0; k < ordered.length; k++) {
+                        var colName = ordered[k];
+                        var val = (p[colName] !== null && p[colName] !== undefined) ? p[colName] : '—';
+                        var cls = '';
+                        if (colName === 'judicial_process_number') cls = ' class="num"';
+                        html += '<td' + cls + '>' + _escapeHtml(val) + '</td>';
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody></table></div>';
+                body.innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                body.innerHTML = `
+        <div style="text-align:center; padding:40px;">
+            <p style="color:var(--red); font-size:18px; font-weight:bold; margin-bottom:10px;">⚠️ Falha na conexão</p>
+            <p style="color:var(--muted); font-size:14px;">${_escapeHtml(err.message)}</p>
+            <button class="btn" onclick="fetchData()" style="margin-top:20px;">Tentar Novamente</button>
+        </div>
+    `;
+                toast("Erro ao carregar dados: " + err.message, "error");
             }
         }
     </script>
