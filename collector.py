@@ -303,6 +303,11 @@ def _process_blank_notices_client(
                 "total": 0, "records": [], "error_message": "Configuração ausente"}
 
     token = _authenticate(cfg)
+    logger.info(
+        f"[BLANK CLIENT] {cfg['name']} "
+        f"| PREFIX={cfg['prefix']} "
+        f"| DATABASE={cfg['database']}"
+    )
     if not token:
         return {"prefix": cfg["prefix"], "name": cfg["name"], "status": "auth_error",
                 "total": 0, "records": [], "error_message": "Falha na autenticação com Metabase"}
