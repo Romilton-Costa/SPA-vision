@@ -135,6 +135,8 @@
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(56, 189, 248, .15);
         }
+        .rotina-card.status-desativado  { border-color: var(--muted); background: rgba(148,163,184,.05); }
+        .rotina-card.status-desativado .rc-status { background: rgba(148,163,184,.15); color: var(--muted); }
 
         .btn {
             padding: 10px 20px;
@@ -230,7 +232,37 @@
             margin-bottom: 24px;
             width: 100%;
         }
+        /* ── BADGE DE CPU NO CARD ── */
+        .card-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
 
+        .cpu-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--muted);
+            font-family: monospace;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cpu-badge.warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--yellow);
+        }
+
+        .cpu-badge.critical {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--red);
+            font-weight: 700;
+        }
         .main-layout {
             display: flex;
             flex-direction: column;
@@ -531,22 +563,6 @@
             margin-top: 4px;
         }
 
-        .card .status-dot {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--green);
-        }
-
-        .card .status-dot.error {
-            background: var(--red) !important;
-            box-shadow: 0 0 8px var(--red);
-            animation: none;
-        }
-
         .card .status-dot.no_config {
             background: var(--border);
         }
@@ -570,6 +586,197 @@
             opacity: 1;
             pointer-events: all;
         }
+        /* ── CARD DE ROTINA ── */
+.rotina-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.rotina-card {
+    background: var(--surface);
+    border-radius: 10px;
+    border-left: 4px solid var(--green);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rotina-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0,0,0,.35);
+}
+
+.rotina-card.status-ok          { border-color: var(--green); }
+.rotina-card.status-nao-rodou   { border-color: var(--red); background: rgba(248,113,113,.06); animation: pulse-red 2s infinite; }
+.rotina-card.status-sem-rotina  { border-color: var(--yellow); background: rgba(251,191,36,.06); }
+.rotina-card.status-verificar   { border-color: var(--yellow); }
+.rotina-card.status-error       { border-color: var(--red); opacity: .8; cursor: default; }
+
+.rotina-card .rc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.rotina-card .rc-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rotina-card .rc-status {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+}
+
+.rotina-card.status-ok          .rc-status { background: rgba(74,222,128,.15);  color: var(--green); }
+.rotina-card.status-nao-rodou   .rc-status { background: rgba(248,113,113,.2);  color: var(--red); }
+.rotina-card.status-sem-rotina  .rc-status { background: rgba(251,191,36,.15);  color: var(--yellow); }
+.rotina-card.status-verificar   .rc-status { background: rgba(251,191,36,.15);  color: var(--yellow); }
+.rotina-card.status-error       .rc-status { background: rgba(248,113,113,.2);  color: var(--red); }
+
+.rotina-card .rc-meta {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: monospace;
+}
+
+/* ── POPUP DE ALERTA DE ROTINA ── */
+#rotinaAlertOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(6px);
+    z-index: 2500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn .25s ease-out;
+}
+
+#rotinaAlertOverlay.open { display: flex; }
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.rotina-alert-box {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 2px solid var(--red);
+    border-radius: 16px;
+    max-width: 720px;
+    width: 92%;
+    padding: 32px 36px;
+    box-shadow: 0 24px 80px rgba(248,113,113,.35), 0 0 0 1px rgba(248,113,113,.2);
+    animation: shakeIn .5s cubic-bezier(.36,.07,.19,.97);
+}
+
+@keyframes shakeIn {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+    20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+.rotina-alert-box .ra-icon {
+    font-size: 52px;
+    text-align: center;
+    margin-bottom: 8px;
+    animation: pulse 1s infinite;
+}
+
+.rotina-alert-box h2 {
+    color: var(--red);
+    font-size: 22px;
+    text-align: center;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.rotina-alert-box .ra-sub {
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+    margin-bottom: 22px;
+}
+
+.rotina-alert-box .ra-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 22px;
+}
+
+.rotina-alert-box .ra-item {
+    background: rgba(248,113,113,.08);
+    border-left: 3px solid var(--red);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.rotina-alert-box .ra-item .ra-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.rotina-alert-box .ra-item .ra-detail {
+    font-size: 11px;
+    color: var(--red);
+    font-family: monospace;
+    text-align: right;
+}
+
+.rotina-alert-box .ra-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.rotina-alert-box .ra-actions button {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .15s;
+    border: none;
+}
+
+.rotina-alert-box .ra-actions .ra-btn-dismiss {
+    background: rgba(148,163,184,.15);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.rotina-alert-box .ra-actions .ra-btn-mute {
+    background: linear-gradient(135deg, #f87171, #dc2626);
+    color: #fff;
+}
+
+.rotina-alert-box .ra-actions button:hover {
+    transform: translateY(-2px);
+}
 
         .spinner {
             width: 45px;
@@ -1176,6 +1383,37 @@
             </div>
             <div id="tribunaisStatus" class="cert-container"></div>
         </section>
+                <!-- ── ROTINA DE EXPEDIENTES ── -->
+        <section id="rotina-section">
+            <div class="section-header" style="margin-bottom:10px;">
+                <span style="font-size:18px;">⚙️</span>
+                <h2 style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">
+                    Rotina de Expedientes
+                </h2>
+                <span id="rotinaLastCheck" style="font-size:11px; color:var(--muted); margin-left:auto;"></span>
+            </div>
+            <div id="rotina-grid" class="rotina-grid">
+                <div class="rotina-card status-ok" style="cursor:default; opacity:.5;">
+                    <div class="rc-header">
+                        <div class="rc-name">Carregando...</div>
+                        <div class="rc-status">⏳</div>
+                    </div>
+                </div>
+            </div>
+             <!-- ── POPUP DE ALERTA DE ROTINA (com som) ── -->
+    <div id="rotinaAlertOverlay">
+        <div class="rotina-alert-box">
+            <div class="ra-icon">🚨</div>
+            <h2>Rotina com Falha</h2>
+            <div class="ra-sub" id="rotinaAlertSub">Detectados clientes com problema na rotina de expedientes</div>
+            <div class="ra-list" id="rotinaAlertList"></div>
+            <div class="ra-actions">
+                <button class="ra-btn-mute" onclick="silenciarRotinaHoje()">🔇 Silenciar por 1h</button>
+                <button class="ra-btn-dismiss" onclick="fecharRotinaAlert()">Fechar</button>
+            </div>
+        </div>
+    </div>
+        </section>
         <!-- <div id="tribunaisStatus" class="cert-container"></div>-->
         <section id="errbit-section" style="display: none;">
             <h2
@@ -1367,7 +1605,7 @@
                 fetchBlankNotices();   // TTL 20min no backend — responde rápido do cache
                 fetchBlankNoticesTodos(); // Cadastros em branco de todos os clientes (exceto MB5)
                 fetchSSLCerts();       // TTL 1h no backend — nunca bloqueia
-
+                fetchCpuUsage();
             } catch (err) {
                 toast("Falha de autenticação", "error");
                 console.error(err);
@@ -1421,7 +1659,41 @@
                 section.style.display = 'none';
             }
         }
+    async function fetchCpuUsage() {
+        try {
+        const res = await fetch(`${API_BASE}/api/zabbix/cpu`);
+        if (!res.ok) return;
+        const result = await res.json();
+        
+        if (result && Array.isArray(result.data)) {
+            const cpuMap = {};
+            result.data.forEach(item => {
+                cpuMap[item.name] = item.cpu_usage;
+            });
 
+            // Atualiza dynamicamente os badges de CPU já existentes no DOM
+            document.querySelectorAll('.card').forEach(card => {
+                const nameEl = card.querySelector('.name');
+                if (nameEl) {
+                    const instName = nameEl.textContent.trim();
+                    const cpuVal = cpuMap[instName];
+                    const cpuBadge = card.querySelector('.cpu-badge');
+                    if (cpuBadge && cpuVal !== undefined && cpuVal !== null) {
+                        const cpuNum = parseFloat(cpuVal);
+                        let cpuClass = '';
+                        if (cpuNum >= 85) cpuClass = 'critical';
+                        else if (cpuNum >= 70) cpuClass = 'warning';
+                        
+                        cpuBadge.className = `cpu-badge ${cpuClass}`;
+                        cpuBadge.innerHTML = ` ${cpuNum.toFixed(1)}%`;
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('[CPU Fetch]', e);
+    }
+}
 
         async function checkTribunaisStatus() {
             const container = document.getElementById("tribunaisStatus");
@@ -1552,23 +1824,42 @@
                 const isErr = item.status !== 'ok';
                 const count = item.total_pendentes || 0;
 
+                // Processamento dos dados de CPU (ex: item.cpu_usage ou item.cpu)
+                const cpuVal = item.cpu_usage !== undefined ? item.cpu_usage : (item.cpu !== undefined ? item.cpu : null);
+                let cpuMarkup = '';
+
+                if (cpuVal !== null && cpuVal !== undefined) {
+                    const cpuNum = parseFloat(cpuVal);
+                    let cpuClass = '';
+                    if (cpuNum >= 85) {
+                        cpuClass = 'critical';
+                    } else if (cpuNum >= 70) {
+                        cpuClass = 'warning';
+                    }
+                   // cpuMarkup = `<span class="cpu-badge ${cpuClass}" title="Uso de CPU">CPU ${cpuNum.toFixed(1)}%</span>`;
+                } else {
+                  //  cpuMarkup = `<span class="cpu-badge" title="CPU "></span>`;
+                }
+
                 // Pega a mensagem de erro caso exista, senão usa um texto padrão
                 const errorMessage = item.error_message || "Erro na conexão com Metabase";
 
                 const card = document.createElement('div');
-                // Adiciona a classe 'error' se o status não for ok
                 card.className = `card ${type} ${isErr ? 'error' : ''}`;
                 card.onclick = () => openDetails(item.prefixo, item.instancia);
 
                 card.innerHTML = `
-            <div class="status-dot ${item.status === 'ok' ? '' : 'error'}"></div>
-            <div class="name">${item.instancia}</div>
-            ${isErr ?
-                        `<div class="error-text">⚠️ ${errorMessage}</div>` :
+                    <div class="${item.status === 'ok' ? '' : 'error'}"></div>
+                    <div class="card-header-info">
+                        <div class="name">${_escapeHtml(item.instancia)}</div>
+                        ${cpuMarkup}
+                    </div>
+                    ${isErr ?
+                        `<div class="error-text">⚠️ ${_escapeHtml(errorMessage)}</div>` :
                         `<div class="count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
-                 <div class="count-label">pendente${count !== 1 ? 's' : ''} não cadastrado${count !== 1 ? 's' : ''}</div>`
+                         <div class="count-label">pendente${count !== 1 ? 's' : ''} não cadastrado${count !== 1 ? 's' : ''}</div>`
                     }
-        `;
+                `;
 
                 grid.appendChild(card);
             });
@@ -1799,6 +2090,8 @@
         fetchBlankNotices();
         fetchBlankNoticesTodos();
         fetchSSLCerts();
+        fetchCpuUsage();
+        fetchRotina();
 
         // ─── CADASTROS EM BRANCO ────────────────────────────────────────────────────
         async function fetchBlankNotices() {
@@ -1972,105 +2265,114 @@
                 .replace(/'/g, '&#39;');
         }
 
-        async function fetchBlankNoticesTodos() {
-            const section = document.getElementById('blank-notices-all-section');
-            const cardsEl = document.getElementById('blank-notices-all-cards');
-            const statusEl = document.getElementById('blankNoticesAllStatus');
+    async function fetchBlankNoticesTodos() {
+    const section = document.getElementById('blank-notices-all-section');
+    const cardsEl = document.getElementById('blank-notices-all-cards');
+    const statusEl = document.getElementById('blankNoticesAllStatus');
 
-            if (!section || !cardsEl) return;
+    if (!section || !cardsEl) return;
 
-            var sEl = document.getElementById('dataInicio');
-            var eEl = document.getElementById('dataFim');
-            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
-            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
+    var sEl = document.getElementById('dataInicio');
+    var eEl = document.getElementById('dataFim');
+    var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
+    var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
 
-            var url = API_BASE + '/processos/blank-notices/todos?t=' + Date.now();
-            if (inicio) url += '&dataInicio=' + inicio;
-            if (fim) url += '&dataFim=' + fim;
+    var url = API_BASE + '/processos/blank-notices/todos?t=' + Date.now();
+    if (inicio) url += '&dataInicio=' + inicio;
+    if (fim) url += '&dataFim=' + fim;
 
-            section.style.display = 'block';
-            cardsEl.innerHTML = `
-                <div class="card-blank-warning" style="cursor:default; opacity:0.45;">
-                    <div class="bw-left">
-                        <div class="bw-icon">⏳</div>
-                        <div class="bw-name">Carregando clientes...</div>
-                    </div>
-                </div>`;
+    section.style.display = 'block';
+    cardsEl.innerHTML = `
+        <div class="card-blank-warning" style="cursor:default; opacity:0.45;">
+            <div class="bw-left">
+                <div class="bw-icon">⏳</div>
+                <div class="bw-name">Carregando clientes...</div>
+            </div>
+        </div>`;
 
-            try {
-                var res = await fetch(url);
-                if (res.status === 429) {
-                    if (statusEl) statusEl.textContent = '🟡 Muitas requisições, aguarde';
-                    return;
-                }
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                var lista = await res.json();
-                if (!Array.isArray(lista)) throw new Error('Resposta inválida do servidor');
-
-                cardsEl.innerHTML = '';
-
-                if (lista.length === 0) {
-                    cardsEl.innerHTML = '<div style="color:var(--muted); font-size:12px;">Nenhum cliente configurado.</div>';
-                    if (statusEl) statusEl.textContent = '';
-                    return;
-                }
-
-                var algumErro = false;
-
-                lista.forEach(function (item) {
-                    var isError = item.status && item.status !== 'ok';
-                    var count = item.total || 0;
-
-                    var card = document.createElement('div');
-                    card.className = 'card-blank-warning' + (isError ? ' error' : '');
-
-                    if (isError) {
-                        algumErro = true;
-                        card.style.borderColor = 'var(--red)';
-                        card.style.cursor = 'default';
-
-                        var statusLabel = {
-                            'no_config': '⚙️ Não configurado',
-                            'auth_error': '🔐 Falha de autenticação',
-                            'query_error': '🔴 Erro na consulta',
-                        }[item.status] || '🔴 Erro';
-
-                        card.innerHTML = `
-                            <div class="bw-left">
-                                <div class="bw-icon">🔴</div>
-                                <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
-                                <div class="bw-count" style="font-size:11px; color:var(--red);">${statusLabel}</div>
-                            </div>`;
-                    } else {
-                        card.onclick = function () {
-                            openBlankNoticesAllDetails(item.prefixo, item.instancia);
-                        };
-                        card.innerHTML = `
-                            <div class="bw-left">
-                                <div class="bw-icon">${count > 0 ? '⚠️' : '✅'}</div>
-                                <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
-                                <div class="bw-count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
-                                <div class="bw-label">em branco</div>
-                            </div>`;
-                    }
-
-                    cardsEl.appendChild(card);
-                });
-
-                if (statusEl) statusEl.textContent = algumErro ? '🟡 Alguns clientes com erro' : '';
-
-            } catch (err) {
-                console.error('[Blank Notices Todos]', err);
-                cardsEl.innerHTML = `
-                    <div class="card-blank-warning" style="cursor:default; border-color:var(--red); opacity:0.8;">
-                        <div class="bw-left">
-                            <div class="bw-icon">🔴</div>
-                            <div class="bw-name">Sem resposta</div>
-                        </div>
-                    </div>`;
-                if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
-            }
+    try {
+        var res = await fetch(url);
+        if (res.status === 429) {
+            if (statusEl) statusEl.textContent = '🟡 Muitas requisições, aguarde';
+            return;
         }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var lista = await res.json();
+        if (!Array.isArray(lista)) throw new Error('Resposta inválida do servidor');
+
+        cardsEl.innerHTML = '';
+
+        var algumErro = false;
+        var cardsExibidos = 0;
+
+        lista.forEach(function (item) {
+            var isError = item.status && item.status !== 'ok';
+            var count = item.total || 0;
+
+            // REGRA: Exibe apenas se houver erro OU se o total for maior ou igual a 1
+            if (!isError && count < 1) {
+                return;
+            }
+
+            cardsExibidos++;
+
+            var card = document.createElement('div');
+            card.className = 'card-blank-warning' + (isError ? ' error' : '');
+
+            if (isError) {
+                algumErro = true;
+                card.style.borderColor = 'var(--red)';
+                card.style.cursor = 'default';
+
+                var statusLabel = {
+                    'no_config': '⚙️ Não configurado',
+                    'auth_error': '🔐 Falha de autenticação',
+                    'query_error': '🔴 Erro na consulta',
+                }[item.status] || '🔴 Erro';
+
+                card.innerHTML = `
+                    <div class="bw-left">
+                        <div class="bw-icon">🔴</div>
+                        <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
+                        <div class="bw-count" style="font-size:11px; color:var(--red);">${statusLabel}</div>
+                    </div>`;
+            } else {
+                card.onclick = function () {
+                    openBlankNoticesAllDetails(item.prefixo, item.instancia);
+                };
+                card.innerHTML = `
+                    <div class="bw-left">
+                        <div class="bw-icon">⚠️</div>
+                        <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
+                        <div class="bw-count">${count.toLocaleString('pt-BR')}</div>
+                        <div class="bw-label">em branco</div>
+                    </div>`;
+            }
+
+            cardsEl.appendChild(card);
+        });
+
+        // Oculta a seção inteira caso não haja cards pendentes/com erro
+        if (cardsExibidos === 0) {
+            section.style.display = 'none';
+        } else {
+            section.style.display = 'block';
+        }
+
+        if (statusEl) statusEl.textContent = algumErro ? '' : '';
+
+    } catch (err) {
+        console.error('[Blank Notices Todos]', err);
+        cardsEl.innerHTML = `
+            <div class="card-blank-warning" style="cursor:default; border-color:var(--red); opacity:0.8;">
+                <div class="bw-left">
+                    <div class="bw-icon">🔴</div>
+                    <div class="bw-name">Sem resposta</div>
+                </div>
+            </div>`;
+        if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
+    }
+}
 
         async function openBlankNoticesAllDetails(prefix, name) {
             var bg = document.getElementById('modalBg');
@@ -2143,7 +2445,374 @@
                 toast("Erro ao carregar dados: " + err.message, "error");
             }
         }
+        // ─── ROTINA DE EXPEDIENTES ─────────────────────────────────────────────────
+const ROTINA_STATUS_LABEL = {
+    'OK':          { label: 'OK',         cls: 'status-ok',         icon: '✅' },
+    'NAO RODOU':   { label: 'NÃO RODOU',  cls: 'status-nao-rodou',  icon: '🔴' },
+    'SEM_ROTINA':  { label: 'SEM ROTINA', cls: 'status-sem-rotina', icon: '🟡' },
+    'VERIFICAR':   { label: 'VERIFICAR',  cls: 'status-verificar',  icon: '🟡' },
+    'query_error': { label: 'ERRO QUERY', cls: 'status-error',      icon: '⚠️' },
+    'auth_error':  { label: 'ERRO AUTH',  cls: 'status-error',      icon: '🔐' },
+    'no_config':   { label: 'SEM CONFIG', cls: 'status-error',      icon: '⚙️' },
+    'DESATIVADO': { label: 'DESATIVADO', cls: 'status-desativado', icon: '⏸️' },
+};
+
+let _rotinaAlertSuppressUntil = 0;
+let _rotinaAlertAudioCtx = null;
+let _rotinaAlertIntervalId = null;
+
+// Cria AudioContext só após interação do usuário (exigência dos browsers)
+function _ensureAudioCtx() {
+    if (_rotinaAlertAudioCtx) return _rotinaAlertAudioCtx;
+    try {
+        _rotinaAlertAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (_) { /* browser sem suporte */ }
+    return _rotinaAlertAudioCtx;
+}
+
+// Toca um bipe de alerta (dois tons descendentes — "sirene curta")
+function _tocarAlertaRotina() {
+    const ctx = _ensureAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+    const now = ctx.currentTime;
+
+    // Tom 1
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'square';
+    osc1.frequency.setValueAtTime(880, now);
+    osc1.frequency.setValueAtTime(660, now + 0.18);
+    gain1.gain.setValueAtTime(0.0001, now);
+    gain1.gain.exponentialRampToValueAtTime(0.15, now + 0.02);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    osc1.connect(gain1).connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    // Tom 2 (eco)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(880, now + 0.4);
+    osc2.frequency.setValueAtTime(660, now + 0.58);
+    gain2.gain.setValueAtTime(0.0001, now + 0.4);
+    gain2.gain.exponentialRampToValueAtTime(0.15, now + 0.42);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+    osc2.connect(gain2).connect(ctx.destination);
+    osc2.start(now + 0.4);
+    osc2.stop(now + 0.75);
+}
+
+async function fetchRotina() {
+    const grid = document.getElementById('rotina-grid');
+    const lastCheck = document.getElementById('rotinaLastCheck');
+    if (!grid) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/rotina/status?t=${Date.now()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const lista = await res.json();
+        if (!Array.isArray(lista)) throw new Error('Resposta inválida');
+
+        grid.innerHTML = '';
+
+        if (lista.length === 0) {
+            grid.innerHTML = `<div class="rotina-card status-ok" style="cursor:default; opacity:.7;">
+                <div class="rc-header"><div class="rc-name">Nenhum cliente configurado</div></div>
+            </div>`;
+            return;
+        }
+
+        lista.forEach(item => {
+            const meta = ROTINA_STATUS_LABEL[item.status] || ROTINA_STATUS_LABEL['VERIFICAR'];
+            const card = document.createElement('div');
+            card.className = `rotina-card ${meta.cls}`;
+            if (item.status === 'ok' || item.status === 'SEM_ROTINA' || meta.cls === 'status-error') {
+                card.style.cursor = 'default';
+            } else {
+                card.onclick = () => openRotinaDetalhes(item.prefix, item.name);
+            }
+
+            const detail = item.error_message
+                ? `<div class="rc-meta" style="color:var(--red);">${_escapeHtml(item.error_message)}</div>`
+                : `<div class="rc-meta">${item.total || 0} Rotinas</div>`;
+
+            card.innerHTML = `
+                <div class="rc-header">
+                    <div class="rc-name" title="${_escapeHtml(item.name)}">${_escapeHtml(item.name)}</div>
+                    <div class="rc-status">${meta.icon} ${meta.label}</div>
+                </div>
+                ${detail}
+            `;
+            grid.appendChild(card);
+        });
+
+        if (lastCheck) {
+            lastCheck.textContent = `Verificado às ${new Date().toLocaleTimeString('pt-BR')}`;
+        }
+
+
+    } catch (err) {
+        console.error('[Rotina]', err);
+        grid.innerHTML = `<div class="rotina-card status-error" style="cursor:default;">
+            <div class="rc-header">
+                <div class="rc-name">Falha ao carregar rotinas</div>
+                <div class="rc-status">⚠️ ERRO</div>
+            </div>
+            <div class="rc-meta" style="color:var(--red);">${_escapeHtml(err.message)}</div>
+        </div>`;
+    }
+}
+
+async function verificarAlertasRotina() {
+    if (Date.now() < _rotinaAlertSuppressUntil) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/rotina/alertas?t=${Date.now()}`);
+        if (!res.ok) return;
+        const alertas = await res.json();
+        if (!Array.isArray(alertas) || alertas.length === 0) return;
+
+        exibirPopupRotina(alertas);
+    } catch (e) {
+        console.warn('[Rotina Alertas]', e);
+    }
+}
+
+function exibirPopupRotina(alertas) {
+    const overlay = document.getElementById('rotinaAlertOverlay');
+    const listEl = document.getElementById('rotinaAlertList');
+    const subEl = document.getElementById('rotinaAlertSub');
+    if (!overlay || !listEl) return;
+
+    subEl.textContent = `${alertas.length} cliente(s) com problema na rotina de expedientes`;
+
+    listEl.innerHTML = '';
+    alertas.forEach(a => {
+        const meta = ROTINA_STATUS_LABEL[a.status] || { label: a.status };
+        const detail = a.error_message || meta.label;
+        const item = document.createElement('div');
+        item.className = 'ra-item';
+        item.innerHTML = `
+            <div class="ra-name">${_escapeHtml(a.name)}</div>
+            <div class="ra-detail">${_escapeHtml(detail)}</div>
+        `;
+        listEl.appendChild(item);
+    });
+
+    overlay.classList.add('open');
+
+    // Som: bipe imediato + repetição a cada 12s enquanto o popup estiver aberto
+    _tocarAlertaRotina();
+    if (_rotinaAlertIntervalId) clearInterval(_rotinaAlertIntervalId);
+    _rotinaAlertIntervalId = setInterval(() => {
+        if (!document.getElementById('rotinaAlertOverlay').classList.contains('open')) {
+            clearInterval(_rotinaAlertIntervalId);
+            _rotinaAlertIntervalId = null;
+            return;
+        }
+        _tocarAlertaRotina();
+    }, 12000);
+}
+
+function fecharRotinaAlert() {
+    const overlay = document.getElementById('rotinaAlertOverlay');
+    if (overlay) overlay.classList.remove('open');
+    if (_rotinaAlertIntervalId) {
+        clearInterval(_rotinaAlertIntervalId);
+        _rotinaAlertIntervalId = null;
+    }
+}
+
+function silenciarRotinaHoje() {
+    // Silencia por 1h
+    _rotinaAlertSuppressUntil = Date.now() + 60 * 60 * 1000;
+    fecharRotinaAlert();
+    toast('Alertas de rotina silenciados por 1 hora', 'info');
+}
+
+async function openRotinaDetalhes(prefix, name) {
+    const bg = document.getElementById('modalBg');
+    const body = document.getElementById('modalBody');
+    const titleEl = document.getElementById('modalTitle');
+    const subEl = document.getElementById('modalSub');
+
+    if (!bg || !body || !titleEl) {
+        console.warn('[Rotina Detalhes] Elementos do modal não encontrados no DOM');
+        return;
+    }
+
+    // ── Reset visual + loading ────────────────────────────────────────────
+    titleEl.textContent = `${name} — Rotina de Expedientes`;
+    if (subEl) subEl.textContent = 'A carregar...';
+    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
+    bg.classList.add('open');
+
+    // ── Helper: escape seguro (redeclarado localmente para não depender do global) ──
+    const esc = (v) => String(v === null || v === undefined ? '—' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    // ── Helper: formata data ISO em pt-BR ─────────────────────────────────
+    const fmtDate = (val) => {
+        if (val === null || val === undefined || val === '—') return '—';
+        try {
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return esc(val);
+            return d.toLocaleString('pt-BR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        } catch (_) {
+            return esc(val);
+        }
+    };
+
+    // ── Helper: badge colorido para status_rotina ─────────────────────────
+    const statusBadge = (status) => {
+        if (!status) return '—';
+        const s = String(status).toUpperCase();
+        let cor = 'var(--muted)';
+        let bgc = 'rgba(148,163,184,.12)';
+        if (s === 'OK')             { cor = 'var(--green)';  bgc = 'rgba(74,222,128,.15)'; }
+        else if (s === 'NAO RODOU') { cor = 'var(--red)';    bgc = 'rgba(248,113,113,.2)'; }
+        else if (s === 'VERIFICAR') { cor = 'var(--yellow)'; bgc = 'rgba(251,191,36,.15)'; }
+        return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${bgc};color:${cor};">${esc(s)}</span>`;
+    };
+
+    try {
+        const url = `${API_BASE}/api/rotina/detalhes/${encodeURIComponent(prefix)}?t=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const result = await res.json();
+
+        // ── Validação defensiva do payload ────────────────────────────────
+        if (!result || typeof result !== 'object') {
+            throw new Error('Resposta inválida do servidor');
+        }
+        if (result.status === 'no_config' || result.status === 'auth_error' || result.status === 'query_error') {
+            const msg = result.error_message || 'Falha ao consultar a rotina deste cliente';
+            body.innerHTML = `
+                <div style="text-align:center;padding:40px;">
+                    <p style="color:var(--red);font-size:16px;font-weight:600;margin-bottom:8px;">⚠️ ${esc(msg)}</p>
+                    <p style="color:var(--muted);font-size:13px;">Status: ${esc(result.status)}</p>
+                </div>`;
+            if (subEl) subEl.textContent = `status: ${result.status}`;
+            return;
+        }
+
+        if (subEl) {
+            subEl.textContent = `${(result.total || 0).toLocaleString('pt-BR')} registro(s) · status: ${result.status || '—'}`;
+        }
+
+        // ── Sem registros ─────────────────────────────────────────────────
+        if (!Array.isArray(result.rotinas) || result.rotinas.length === 0) {
+            body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Nenhuma rotina configurada para este cliente.</p>';
+            return;
+        }
+
+        // ── Define ordem das colunas ──────────────────────────────────────
+        const priority = ['description', 'status_rotina', 'last_start', 'last_finished', 'last_processing'];
+        const firstRow = result.rotinas[0] || {};
+        const allCols = Object.keys(firstRow);
+        const ordered = priority
+            .filter(c => allCols.indexOf(c) !== -1)
+            .concat(allCols.filter(c => priority.indexOf(c) === -1));
+
+        // ── Monta HTML da tabela ──────────────────────────────────────────
+        let html = '<div class="table-wrap"><table><thead><tr>';
+        for (const col of ordered) {
+            html += '<th>' + esc(col.replace(/_/g, ' ')) + '</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        for (const row of result.rotinas) {
+            html += '<tr>';
+            for (const col of ordered) {
+                const raw = (row[col] !== null && row[col] !== undefined) ? row[col] : '—';
+
+                if (col === 'status_rotina') {
+                    html += '<td>' + statusBadge(raw) + '</td>';
+                } else if (col === 'last_start' || col === 'last_finished' || col === 'last_processing') {
+                    html += '<td style="font-family:monospace;font-size:12px;color:var(--text);">' + fmtDate(raw) + '</td>';
+                } else if (col === 'description') {
+                    html += '<td style="font-weight:600;color:var(--text);">' + esc(raw) + '</td>';
+                } else {
+                    html += '<td>' + esc(raw) + '</td>';
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+
+        body.innerHTML = html;
+
+    } catch (err) {
+        console.error('[Rotina Detalhes]', err);
+        body.innerHTML = `
+            <div style="text-align:center;padding:40px;">
+                <p style="color:var(--red);font-size:18px;font-weight:bold;margin-bottom:10px;">⚠️ Falha na conexão</p>
+                <p style="color:var(--muted);font-size:14px;">${esc(err.message)}</p>
+                <button class="btn" style="margin-top:20px;"
+                    onclick="openRotinaDetalhes('${esc(prefix)}', '${esc(name)}')">Tentar Novamente</button>
+            </div>
+        `;
+        if (typeof toast === 'function') {
+            toast('Erro ao carregar rotina: ' + err.message, 'error');
+        }
+    }
+}
+// ─── INTEGRAÇÃO COM O CICLO DE VIDA DO DASHBOARD ───────────────────────────
+// Sobrescreve/estende o fetchData existente para também buscar a rotina.
+// Guarda a referência original para não quebrar a cadeia.
+(function () {
+    const _originalFetchData = window.fetchData;
+    window.fetchData = async function (...args) {
+        // Executa o fetch original primeiro (não bloqueia em caso de erro dele)
+        try { await _originalFetchData.apply(this, args); } catch (_) { /* já tratado internamente */ }
+        // Em paralelo, dispara a rotina
+        fetchRotina().catch(e => console.warn('[Rotina fetch]', e));
+    };
+
+    // Dispara a primeira carga logo após o DOM estar pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchRotina().catch(e => console.warn('[Rotina init]', e));
+        });
+    } else {
+        fetchRotina().catch(e => console.warn('[Rotina init]', e));
+    }
+
+    // Re-verifica alertas a cada 60s (independente do refresh geral de 10min)
+    // — assim, se a rotina falhar entre refreshes, o alerta aparece rápido.
+    setInterval(() => {
+        if (Date.now() >= _rotinaAlertSuppressUntil) {
+            fetchRotina().catch(e => console.warn('[Rotina tick]', e));
+        }
+    }, 60000);
+
+    // Retoma o áudio após a primeira interação do usuário (política dos browsers)
+    const _unlockAudio = () => {
+        const ctx = _ensureAudioCtx();
+        if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+        document.removeEventListener('click', _unlockAudio);
+        document.removeEventListener('keydown', _unlockAudio);
+        document.removeEventListener('touchstart', _unlockAudio);
+    };
+    document.addEventListener('click', _unlockAudio, { once: false });
+    document.addEventListener('keydown', _unlockAudio, { once: false });
+    document.addEventListener('touchstart', _unlockAudio, { once: false });
+})();
     </script>
+       
 </body>
 
 </html>
