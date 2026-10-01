@@ -10,6 +10,7 @@ from searchcertify import verificar_certificado, sites
 import requests
 import pandas as pd
 import os
+import socket
 import time
 import logging
 import threading
@@ -21,6 +22,180 @@ from urllib3.util.retry import Retry
 
 load_dotenv()
 
+
+logger = logging.getLogger("zabbix_collector")
+
+# Leitura direta das variáveis de ambiente
+ZABBIX_URL = os.getenv("ZABBIX_API_URL")
+ZABBIX_TOKEN = os.getenv("ZABBIX_API_TOKEN")
+
+
+# ─── DNS OVERRIDE (equivalente ao hosts file, mas em nível de aplicação) ─────
+# Alguns clientes só expõem o Metabase por um hostname que não resolve via DNS
+# público — resolve apenas dentro da rede/VPN do cliente. Editar o arquivo
+# hosts do sistema operacional funciona numa máquina Windows individual, mas
+# não escala para um servidor web: não sobrevive a reprovisionamento, não
+# funciona em containers efêmeros e exige acesso de administrador na máquina.
+#
+# A solução equivalente para uma aplicação web é resolver isso na camada de
+# socket do próprio processo Python, sem tocar no SO. Isso é seguro porque:
+#   - o Host HTTP e o SNI/TLS continuam usando o hostname original (o
+#     `requests`/urllib3 monta ambos a partir da URL, não do IP resolvido);
+#   - a verificação de certificado (verify=True, padrão) continua ativa —
+#     NUNCA desative com verify=False para "resolver" um problema de DNS;
+#   - o override é restrito aos hosts explicitamente listados; qualquer
+#     outro domínio segue a resolução DNS normal.
+#
+# Configuração no .env (mesmo padrão dos prefixos de METABASES):
+#   DNS_OVERRIDES=metabase.spa.pg.df.gov.br=4.228.45.198,outro.host=1.2.3.4
+#
+# Importante: isso resolve apenas o problema de DNS. Se o servidor do cliente
+# também restringe acesso por IP de origem (firewall/allowlist), é necessário,
+# em paralelo, solicitar ao cliente que o IP público de saída DESTE servidor
+# (não da sua máquina local) seja liberado — verifique com `curl ifconfig.me`
+# a partir do próprio servidor, e use um IP fixo/Elastic IP se ele rodar em
+# nuvem com IP dinâmico.
+_original_getaddrinfo = socket.getaddrinfo
+
+
+def _parse_dns_overrides(raw: str) -> Dict[str, str]:
+    """Converte 'host1=ip1,host2=ip2' em {'host1': 'ip1', 'host2': 'ip2'}."""
+    overrides: Dict[str, str] = {}
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry or "=" not in entry:
+            continue
+        host, ip = entry.split("=", 1)
+        host, ip = host.strip().lower(), ip.strip()
+        if host and ip:
+            overrides[host] = ip
+    return overrides
+
+
+_DNS_OVERRIDES = _parse_dns_overrides(os.getenv("DNS_OVERRIDES", ""))
+
+
+def _patched_getaddrinfo(host, *args, **kwargs):
+    """Substitui o host pelo IP mapeado em DNS_OVERRIDES antes de resolver.
+    Hosts fora do mapeamento seguem exatamente o comportamento padrão."""
+    override_ip = _DNS_OVERRIDES.get((host or "").lower())
+    if override_ip:
+        host = override_ip
+    return _original_getaddrinfo(host, *args, **kwargs)
+
+
+if _DNS_OVERRIDES:
+    socket.getaddrinfo = _patched_getaddrinfo
+    logger.info(f"[DNS OVERRIDE] Ativo para: {', '.join(_DNS_OVERRIDES.keys())}")
+
+def zabbix_rpc_call(method: str, params: dict) -> dict:
+    """Realiza chamadas HTTP JSON-RPC para a API do Zabbix."""
+    if not ZABBIX_URL or not ZABBIX_TOKEN:
+        logger.error("Credenciais do Zabbix não foram configuradas no arquivo .env!")
+        return {}
+
+    payload = {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "auth": ZABBIX_TOKEN,
+        "id": 1
+    }
+    headers = {"Content-Type": "application/json-rpc"}
+    
+    try:
+        response = requests.post(ZABBIX_URL, json=payload, headers=headers, timeout=10)
+        response.raise_for_status()
+        res_json = response.json()
+        
+        if "error" in res_json:
+            logger.error(f"Erro na API do Zabbix: {res_json['error']}")
+            return {}
+            
+        return res_json.get("result", {})
+    except Exception as e:
+        logger.error(f"Falha ao conectar no Zabbix: {e}")
+        return {}
+def get_zabbix_cpu_usage() -> Dict[str, Any]:
+    """
+    Retorna o mapeamento de instâncias/clientes com a respectiva taxa de uso de CPU (%).
+    """
+    try:
+        hosts = zabbix_rpc_call("host.get", {
+            "output": ["hostid", "name", "host"],
+            "filter": {"status": "0"}
+        })
+
+        if not hosts or not isinstance(hosts, list):
+            return {}
+
+        host_ids = [h["hostid"] for h in hosts]
+
+        items = zabbix_rpc_call("item.get", {
+            "output": ["hostid", "lastvalue"],
+            "hostids": host_ids,
+            "search": {"key_": "system.cpu.util"},
+            "filter": {"state": "0"}
+        })
+
+        cpu_map_by_id = {}
+        if isinstance(items, list):
+            for item in items:
+                try:
+                    cpu_map_by_id[item["hostid"]] = round(float(item.get("lastvalue", 0)), 1)
+                except (ValueError, TypeError):
+                    cpu_map_by_id[item["hostid"]] = 0.0
+
+        cpu_by_client_name = {}
+        for h in hosts:
+            name = h.get("name") or h.get("host")
+            key = name.strip()
+            cpu_by_client_name[key] = cpu_map_by_id.get(h["hostid"], 0.0)
+
+        return cpu_by_client_name
+    except Exception as e:
+        logger.error(f"Erro ao buscar uso de CPU no Zabbix: {e}")
+        return {}
+def get_cpu_map_by_host() -> dict:
+    """
+    Retorna um dicionário mapeando o nome/instância do cliente para o uso de CPU (%).
+    Exemplo: {'cliente_a': 12.5, 'cliente_b': 85.0}
+    """
+    hosts = zabbix_rpc_call("host.get", {
+        "output": ["hostid", "name", "host"],
+        "filter": {"status": "0"}
+    })
+
+    if not hosts or not isinstance(hosts, list):
+        return {}
+
+    host_ids = [h["hostid"] for h in hosts]
+
+    # Busca os itens de CPU (system.cpu.util)
+    items = zabbix_rpc_call("item.get", {
+        "output": ["hostid", "lastvalue"],
+        "hostids": host_ids,
+        "search": {"key_": "system.cpu.util"},
+        "filter": {"state": "0"}
+    })
+
+    cpu_map_by_id = {}
+    if isinstance(items, list):
+        for item in items:
+            try:
+                cpu_map_by_id[item["hostid"]] = round(float(item.get("lastvalue", 0)), 1)
+            except (ValueError, TypeError):
+                cpu_map_by_id[item["hostid"]] = 0.0
+
+    # Mapeia pelo nome do host (ou prefixo/instância) para cruzamento de dados
+    cpu_by_client_name = {}
+    for h in hosts:
+        name = h.get("name") or h.get("host")
+        # normaliza para lowercase se preferir cruzar chaves de forma insensível a maiúsculas
+        key = name.strip().lower()
+        cpu_by_client_name[key] = cpu_map_by_id.get(h["hostid"])
+
+    return cpu_by_client_name
 # ─── LOGGING ────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
