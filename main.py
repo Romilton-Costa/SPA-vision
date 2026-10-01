@@ -2,7 +2,9 @@ from mangum import Mangum
 from crawler import SPACrawler
 import os
 import logging
+import threading
 import re
+import rotina_service
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional
 
@@ -18,6 +20,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from crawler import SPACrawler
 from errbit_service import router as errbit_router
 import collector
+from fastapi import FastAPI
+from collector import get_zabbix_cpu_usage
 
 # ─── LOGGING ────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -25,7 +29,6 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
-
 # ─── RATE LIMITER ────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per hour", "20 per minute"])
 
@@ -66,7 +69,14 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(collector._warm_ssl_cache, "interval", hours=1, id="ssl_refresh_job")
     scheduler.start()
     logger.info("[SCHEDULER] Agendado: expedientes a cada 15min | SSL a cada 1h.")
+    threading.Thread(target=rotina_service.warm_rotina_cache, daemon=True).start()
+    logger.info("[STARTUP] Aquecimento de rotinas disparado em background.")
 
+    # Agenda recarga de rotinas a cada 5min
+    scheduler.add_job(
+        rotina_service.collect_rotinas,
+        "interval", minutes=5, id="rotina_refresh_job",
+    )
     yield  # app rodando
 
     scheduler.shutdown(wait=False)
@@ -132,7 +142,17 @@ def _validate_date(v: Optional[str]) -> Optional[str]:
     if not DATE_RE.match(v):
         raise ValueError("Data deve estar no formato YYYY-MM-DD")
     return v
-
+@app.get("/api/zabbix/cpu", tags=["infra"])
+def api_zabbix_cpu():
+    """
+    Retorna a taxa de uso de CPU (%) de cada cliente monitorado no Zabbix.
+    """
+    dados = collector.get_zabbix_cpu_usage()
+    lista = [{"name": nome, "cpu_usage": valor} for nome, valor in dados.items()]
+    return {
+        "total": len(lista),
+        "data": lista
+    }
 
 class ResumoItem(BaseModel):
     instancia: str
@@ -179,7 +199,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Tenta encontrar a pasta 'public' (ajusta conforme sua estrutura)
 # Se o main.py estiver dentro de /api ou /src, o ".." sobe um nível.
 # Se estiver na raiz, remova o "..".
-PUBLIC_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "public"))
+PUBLIC_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Monta arquivos estáticos (CSS, JS) para que o index.html consiga carregá-los
 # O check os.path.exists evita que o app quebre se a pasta sumir no deploy
@@ -211,6 +231,14 @@ def get_resumo(
         results = collector.collect_all(data_inicio, data_fim)
         is_cached = cached_before is not None
 
+        # Busca dados de uso de CPU
+        try:
+            # get_zabbix_cpu_usage() já retorna um dict {nome_instancia: cpu_usage}
+            cpu_map = collector.get_zabbix_cpu_usage()
+        except Exception as cpu_err:
+            logger.warning(f"[ZABBIX CPU WARN] Falha ao coletar dados de CPU: {cpu_err}")
+            cpu_map = {}
+
         return [
             {
                 "instancia": r["name"],
@@ -218,6 +246,7 @@ def get_resumo(
                 "status": r["status"],
                 "total_pendentes": r["total"],
                 "cached": is_cached,
+                "cpu_usage": cpu_map.get(r["name"]) or cpu_map.get(r["prefix"])
             }
             for r in results
         ]
@@ -398,7 +427,65 @@ def force_refresh(
     import threading
     threading.Thread(target=collector.collect_all, kwargs={"use_cache": False}, daemon=True).start()
     return {"message": "Cache invalidado. Recarga em andamento."}
+@app.get("/api/rotina/status", tags=["rotina"])
+@limiter.limit("60/minute")
+def get_rotina_status(request: Request):
+    """Resumo da rotina por cliente (card principal do dashboard)."""
+    try:
+        dados = rotina_service.collect_rotinas()
+        return [
+            {
+                "prefix": r["prefix"],
+                "name": r["name"],
+                "status": r["status"],
+                "total": r["total"],
+                "error_message": r.get("error_message"),
+            }
+            for r in dados
+        ]
+    except Exception as e:
+        logger.error(f"[ROTINA STATUS ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Erro ao coletar rotinas")
 
+
+@app.get("/api/rotina/alertas", tags=["rotina"])
+@limiter.limit("60/minute")
+def get_rotina_alertas(request: Request):
+    """Retorna apenas clientes com problema — usado pelo popup + som no frontend."""
+    try:
+        return rotina_service.get_rotina_alertas()
+    except Exception as e:
+        logger.error(f"[ROTINA ALERTAS ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Erro ao coletar alertas de rotina")
+
+
+@app.get("/api/rotina/detalhes/{prefix}", tags=["rotina"])
+@limiter.limit("30/minute")
+def get_rotina_detalhes(request: Request, prefix: str):
+    """Detalhes da rotina de UM cliente (usado no modal)."""
+    prefix = re.sub(r"[^A-Z0-9_]", "", prefix.upper())
+    if not prefix:
+        raise HTTPException(status_code=400, detail="Prefixo inválido")
+
+    try:
+        result = rotina_service.get_rotina_client(prefix)
+        return result
+    except Exception as e:
+        logger.error(f"[ROTINA DETALHES ERROR] {prefix} → {e}")
+        raise HTTPException(status_code=500, detail="Erro ao buscar detalhes da rotina")
+
+
+@app.get("/api/rotina/refresh", tags=["rotina"])
+@limiter.limit("10/minute")
+def refresh_rotina(request: Request):
+    """Invalida o cache da rotina e força nova coleta em background."""
+    rotina_service.invalidate_rotina_cache()
+    threading.Thread(
+        target=rotina_service.collect_rotinas,
+        kwargs={"use_cache": False},
+        daemon=True,
+    ).start()
+    return {"message": "Cache de rotina invalidado. Recarga em andamento."}
 
 # ─── ENTRYPOINT LOCAL ────────────────────────────────────────────────────────
 if __name__ == "__main__":
