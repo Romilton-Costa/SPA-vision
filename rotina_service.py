@@ -48,27 +48,27 @@ _ROTINA_CACHE_LOCK = threading.Lock()
 ROTINA_QUERY = """
 SELECT
   "public"."judicial_processes_pending_notice_settings"."description" AS "description",
-  ("public"."judicial_processes_pending_notice_settings"."last_start" - INTERVAL '3 hours') AS "last_start",
-  ("public"."judicial_processes_pending_notice_settings"."last_finished" - INTERVAL '3 hours') AS "last_finished",
+  ("public"."judicial_processes_pending_notice_settings"."last_start") AS "last_start",
+  ("public"."judicial_processes_pending_notice_settings"."last_finished") AS "last_finished",
   "public"."judicial_processes_pending_notice_settings"."last_processing" AS "last_processing",
   CASE
     -- 1) DESATIVADO: last_finished é de um dia anterior ao atual
     --    Interpretação: a rotina foi encerrada/desligada para este tribunal
-    WHEN ("public"."judicial_processes_pending_notice_settings"."last_finished" - INTERVAL '3 hours')::date < CURRENT_DATE
+    WHEN ("public"."judicial_processes_pending_notice_settings"."last_finished")::date < CURRENT_DATE
       THEN 'DESATIVADO'
 
     -- 2) NAO RODOU: last_start é de um dia anterior ao atual (e não foi finalizado)
-    WHEN ("public"."judicial_processes_pending_notice_settings"."last_start" - INTERVAL '3 hours')::date < CURRENT_DATE
+    WHEN ("public"."judicial_processes_pending_notice_settings"."last_start")::date < CURRENT_DATE
       THEN 'NAO RODOU'
 
     -- 3) Rodou hoje e já passou mais de 1 hora desde o last_start
-    WHEN ("public"."judicial_processes_pending_notice_settings"."last_start" - INTERVAL '3 hours')::date = CURRENT_DATE
-      AND NOW() - ("public"."judicial_processes_pending_notice_settings"."last_start" - INTERVAL '3 hours') > INTERVAL '1 hour'
+    WHEN ("public"."judicial_processes_pending_notice_settings"."last_start")::date = CURRENT_DATE
+      AND NOW() - ("public"."judicial_processes_pending_notice_settings"."last_start") > INTERVAL '1 hour'
       THEN 'OK'
 
     -- 4) Rodou hoje, dentro da janela de 1 hora
-    WHEN ("public"."judicial_processes_pending_notice_settings"."last_start" - INTERVAL '3 hours')::date = CURRENT_DATE
-      AND NOW() - ("public"."judicial_processes_pending_notice_settings"."last_start" - INTERVAL '3 hours') <= INTERVAL '1 hour'
+    WHEN ("public"."judicial_processes_pending_notice_settings"."last_start")::date = CURRENT_DATE
+      AND NOW() - ("public"."judicial_processes_pending_notice_settings"."last_start") <= INTERVAL '1 hour'
       THEN 'OK'
 
     ELSE 'VERIFICAR'

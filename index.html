@@ -2659,10 +2659,22 @@ async function openRotinaDetalhes(prefix, name) {
         .replace(/'/g, '&#39;');
 
     // ── Helper: formata data ISO em pt-BR ─────────────────────────────────
-    const fmtDate = (val) => {
+        const fmtDate = (val) => {
         if (val === null || val === undefined || val === '—') return '—';
+
+        const s = String(val).trim();
+
+        // Guarda: só aceita formatos reconhecíveis como data
+        //   ISO:     2026-09-30T14:22:00  ou  2026-09-30 14:22:00
+        //   Só data: 2026-09-30
+        const pareceData = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?/.test(s);
+        if (!pareceData) {
+            // Não é data — devolve o texto original (ex: "Finalizado com sucesso: 96")
+            return esc(val);
+        }
+
         try {
-            const d = new Date(val);
+            const d = new Date(s);
             if (isNaN(d.getTime())) return esc(val);
             return d.toLocaleString('pt-BR', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
