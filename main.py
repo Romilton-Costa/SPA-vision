@@ -218,6 +218,15 @@ async def dashboard():
             raise HTTPException(status_code=404, detail="Arquivo index.html não localizado no servidor.")
             
     return FileResponse(index_path)
+@app.get("/checklist", response_class=FileResponse, tags=["frontend"])
+async def checklist():
+    """Segunda página HTML que consome outra fonte de dados."""
+    path = os.path.join(PUBLIC_DIR, "checklist.html")
+    if not os.path.isfile(path):
+        logger.error(f"ERRO: dashboard2.html não encontrado em: {path}")
+        raise HTTPException(status_code=404, detail="checklist.html não encontrado")
+    return FileResponse(path)
+
 # ─── RESUMO ──────────────────────────────────────────────────────────────────
 @app.get("/processos/resumo", response_model=List[ResumoItem], tags=["processos"])
 @limiter.limit("30/minute")
