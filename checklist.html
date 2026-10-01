@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel de Checklists</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0D121C; --bg-2:#111827; --surface:#151D2C; --surface-2:#1B2538;
+    --line:#26324A; --line-soft:#1F2A3F;
+    --text:#E7ECF5; --muted:#8C98B0; --faint:#5E6A83;
+    --accent:#7FA7FF; --accent-soft:rgba(127,167,255,.14);
+    --ok:#3FD68F; --ok-soft:rgba(63,214,143,.14);
+    --bad:#FF6B72; --bad-soft:rgba(255,107,114,.14);
+    --wait:#F2B84B; --wait-soft:rgba(242,184,75,.14);
+    --none:#56627A;
+    --display:"Sora","Segoe UI",system-ui,sans-serif;
+    --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:14px;line-height:1.45;
+    background-image:radial-gradient(1200px 500px at 85% -10%, rgba(127,167,255,.08), transparent 60%);
+    min-height:100vh}
+  .wrap{max-width:1480px;margin:0 auto;padding-inline:clamp(16px,3vw,32px);padding-block:24px 48px;display:flex;flex-direction:column;gap:22px}
+
+  /* Header */
+  header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+  .brand .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+  .brand h1{font-family:var(--display);font-weight:700;font-size:clamp(22px,2.6vw,30px);margin:4px 0 2px;letter-spacing:-.01em;text-wrap:balance}
+  .brand .sub{color:var(--muted);font-size:13px}
+  .scope{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line-soft);border-radius:99px;padding:4px 10px}
+  .scope b{color:var(--text);font-weight:600}
+  .scope::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .btn:disabled,.datebox button:disabled{opacity:.35;cursor:not-allowed}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .datebox{display:flex;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .datebox button{background:none;border:0;color:var(--muted);width:36px;height:38px;cursor:pointer;font-size:16px}
+  .datebox button:hover{color:var(--text);background:var(--surface-2)}
+  .cal-wrap{position:relative;overflow:visible}
+  .rangebtn{width:auto!important;display:inline-flex;align-items:center;gap:8px;padding:0 12px!important;color:var(--text)!important;font:500 13.5px var(--body)!important;border-inline:1px solid var(--line)!important;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .rangebtn svg{color:var(--accent)}
+  .cal-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:292px;max-width:calc(100vw - 32px);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:12px;display:flex;flex-direction:column;gap:10px}
+  .cal-months{display:flex;flex-wrap:wrap;gap:6px}
+  .cal-months button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:4px 10px;font:500 12px var(--body);cursor:pointer;width:auto;height:auto}
+  .cal-months button:hover{border-color:var(--accent);color:var(--accent)}
+  .cal-head{display:flex;align-items:center;justify-content:space-between}
+  .cal-head b{font:600 13.5px var(--display);text-transform:capitalize}
+  .cal-head button{background:none;border:0;color:var(--muted);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px}
+  .cal-head button:hover:not(:disabled){background:var(--surface);color:var(--text)}
+  .cal-head button:disabled{opacity:.25;cursor:not-allowed}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .cal-grid .wd{font-size:10.5px;color:var(--faint);text-align:center;padding:2px 0;text-transform:uppercase;letter-spacing:.05em}
+  .cal-grid button{height:34px;width:auto;border:0;border-radius:8px;background:transparent;color:var(--text);font:500 12.5px var(--body);cursor:pointer;font-variant-numeric:tabular-nums;position:relative}
+  .cal-grid button:hover:not(:disabled){background:var(--surface)}
+  .cal-grid button.nodata{color:var(--faint)}
+  .cal-grid button:disabled{visibility:hidden}
+  .cal-grid button.in{background:var(--accent-soft);border-radius:0}
+  .cal-grid button.edge{background:var(--accent);color:#0D121C;border-radius:8px}
+  .cal-grid button.pending{outline:2px solid var(--accent);outline-offset:-2px}
+  .cal-grid button.today::after{content:"";position:absolute;bottom:4px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--accent)}
+  .cal-grid button.edge.today::after{background:#0D121C}
+  .cal-hint{font-size:11.5px;color:var(--muted)}
+  .datebox .sep{color:var(--faint);font-size:12px;padding:0 2px;border-inline:0}
+  .datebox input{background:transparent;border:0;border-inline:1px solid var(--line);color:var(--text);font-family:var(--body);font-size:14px;height:38px;padding:0 10px}
+  .btn{background:var(--surface);border:1px solid var(--line);color:var(--text);height:40px;padding:0 14px;border-radius:10px;cursor:pointer;font:500 13px var(--body);display:inline-flex;align-items:center;gap:8px;text-decoration: none;}
+  .btn:hover{border-color:var(--accent)}
+  .btn.today.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .sync{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+  .ring{width:22px;height:22px;flex:none}
+  .ring circle{fill:none;stroke-width:3}
+  .ring .bg{stroke:var(--line)}
+  .ring .fg{stroke:var(--accent);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1s linear}
+  .sync b{color:var(--text);font-weight:500}
+  .spin{animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .kpi{background:var(--surface);border:1px solid var(--line-soft);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+  button.kpi{font:inherit;color:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+  button.kpi:hover{border-color:var(--line)}
+  button.kpi[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent 70%),var(--surface)}
+  .kpi .lbl{display:flex;justify-content:space-between;gap:8px}
+  .kpi .lbl em{font-style:normal;letter-spacing:0;text-transform:none;font-weight:500;color:var(--accent);font-size:11px}
+  .kpi .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .kpi .val{font-family:var(--display);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+  .kpi .val small{font-size:15px;color:var(--muted);font-weight:500}
+  .bar{height:6px;border-radius:99px;background:var(--line-soft);overflow:hidden;display:flex}
+  .bar i{display:block;height:100%}
+  .kpi .foot{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+  .kpi .foot span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:1px;background:currentColor}
+
+  /* Filters */
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:6px 12px;font:500 12.5px var(--body);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+  .chip b{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600}
+  .chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .chip[aria-pressed="true"] b{color:var(--accent)}
+  .fr{display:flex;gap:8px;flex-wrap:wrap}
+  .field{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;height:36px;padding:0 12px;font:400 13px var(--body);min-width:0}
+  .field::placeholder{color:var(--faint)}
+  #q{width:220px;max-width:100%}
+
+  /* Grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+  .card{background:var(--surface);border:1px solid var(--line-soft);border-radius:14px;padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
+  .card:hover{border-color:var(--line)}
+  .card.alert{border-color:rgba(255,107,114,.55);background:linear-gradient(180deg,rgba(255,107,114,.13),rgba(255,107,114,.06)),var(--surface);animation:alertBeat 10s ease-out infinite}
+  .card.alert .shift{background:rgba(13,18,28,.55)}
+  @keyframes alertBeat{
+    0%{box-shadow:0 0 0 0 rgba(255,107,114,.28);border-color:rgba(255,107,114,.8)}
+    14%{box-shadow:0 0 0 9px rgba(255,107,114,0);border-color:rgba(255,107,114,.55)}
+    100%{box-shadow:0 0 0 0 rgba(255,107,114,0);border-color:rgba(255,107,114,.55)}
+  }
+  .card-h{display:flex;align-items:flex-start;gap:10px}
+  .uf{font:600 10.5px var(--mono);letter-spacing:.05em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:3px 6px;flex:none;margin-top:1px}
+  .card-h h3{font-family:var(--display);font-size:14px;font-weight:600;margin:0;line-height:1.3;flex:1;min-width:0;overflow-wrap:anywhere}
+  .score{font:600 11px var(--mono);color:var(--muted);flex:none;margin-top:2px}
+  .score.full{color:var(--ok)}
+  .shift{border:1px solid transparent;transition:border-color .15s,background .15s;color:inherit;text-decoration:none}
+  a.shift{cursor:pointer}
+  a.shift:hover{border-color:var(--accent);background:var(--surface-2)}
+  a.shift:hover .id{color:var(--accent)}
+  a.shift .id::after{content:" ↗";color:var(--faint)}
+  a.shift:hover .id::after{color:var(--accent)}
+  .shift{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;padding:9px 10px;border-radius:10px;background:var(--bg-2)}
+  .dot{grid-row:span 2;width:14px;height:14px;border-radius:50%;background:var(--none);position:relative}
+  .dot.ok{background:var(--ok);box-shadow:0 0 0 4px var(--ok-soft)}
+  .dot.bad{background:var(--bad);box-shadow:0 0 0 4px var(--bad-soft)}
+  .dot.wait{background:transparent;border:2px dashed var(--wait)}
+  .dot.none{background:transparent;border:2px solid var(--none)}
+  .shift .nm{font-size:12.5px;font-weight:600;display:flex;gap:6px;align-items:baseline}
+  .shift .nm em{font-style:normal;font-weight:400;color:var(--muted);font-size:11.5px}
+  .shift .tec{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .shift .tec::before{content:"Técnico · ";color:var(--faint)}
+  .shift .id{font:500 11.5px var(--mono);color:var(--text);text-align:right}
+  .shift .st{font-size:11.5px;text-align:right;white-space:nowrap}
+  .st.ok{color:var(--ok)} .st.bad{color:var(--bad)} .st.wait{color:var(--wait)} .st.none{color:var(--faint)}
+
+  /* Tech summary */
+  .section-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .section-h h2{font-family:var(--display);font-size:15px;font-weight:600;margin:0}
+  .section-h span{color:var(--muted);font-size:12px}
+  .techs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+  .tech{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border:1px solid var(--line-soft);border-radius:10px;padding:9px 12px;cursor:pointer;color:var(--text);font:500 13px var(--body);text-align:left}
+  .tech:hover{border-color:var(--line)}
+  .tech[aria-pressed="true"]{border-color:var(--accent)}
+  .tech .n{font:600 11.5px var(--mono);display:flex;gap:8px}
+  .tech .n .p{color:var(--bad)} .tech .n .d{color:var(--ok)}
+
+  /* multi-seleção de clientes */
+  .ms{position:relative}
+  .ms-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}
+  .ms-btn[aria-expanded="true"],.ms-btn.on{border-color:var(--accent);color:var(--accent)}
+  .ms-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:min(340px,calc(100vw - 32px));background:var(--surface-2);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:10px;display:flex;flex-direction:column;gap:8px}
+  .ms-pop .field{width:100%}
+  .ms-acts{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);align-items:center}
+  .ms-acts button{background:none;border:0;color:var(--accent);cursor:pointer;font:500 12px var(--body);padding:4px 2px}
+  .ms-list{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+  .ms-list label{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:13px}
+  .ms-list label:hover{background:var(--surface)}
+  .ms-list input{accent-color:var(--accent);width:15px;height:15px;flex:none}
+  .ms-list .u{font:600 10px var(--mono);color:var(--muted);margin-left:auto}
+  .active-filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+  .tag{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:4px 6px 4px 10px;font-size:12px}
+  .tag button{background:none;border:0;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0 4px}
+  /* modo período */
+  .pbar{height:4px;border-radius:99px;background:var(--line-soft);overflow:hidden;display:flex;margin-top:-2px}
+  .pbar i{display:block;height:100%}
+  .rows{display:flex;flex-direction:column;gap:6px;max-height:318px;overflow:auto;padding-right:2px;scrollbar-width:thin}
+  .shift .nm .dt{font:500 11.5px var(--mono);color:var(--text);margin-right:2px}
+  .score.big{font-size:13px;color:var(--text)}
+  .score.big small{color:var(--muted);font-weight:500}
+  .score.big.full{color:var(--ok)}
+  .card-sub{display:flex;gap:10px;font-size:11.5px;color:var(--muted);margin-top:-4px}
+  .card-sub .p{color:var(--bad)} .card-sub .d{color:var(--ok)}
+  .state{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:36px 20px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+  .state h3{margin:0;color:var(--text);font-family:var(--display);font-size:16px}
+  .state .btn{margin-top:4px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend .dot{width:10px;height:10px;grid-row:auto;box-shadow:none}
+  footer{color:var(--faint);font-size:11.5px}
+  :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --green: #4ade80;
+            --pink: #f472b6;
+            --red: #f87171;
+            --yellow: #fbbf24;
+        }
+.btn-icon {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            outline: none;
+            text-decoration: none;
+        }
+        .btn-icon::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface);
+            color: var(--text);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            border: 1px solid var(--border);
+            z-index: 100;
+            border-color: 1 solid var(--accent);
+        }
+
+        .btn-icon:hover::after {
+            opacity: 1;
+        }
+  @media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (max-width:520px){.kpis{grid-template-columns:1fr 1fr}.kpi .val{font-size:24px}#q{width:100%}.fr{width:100%}.fr .field{flex:1}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">Coreplan · Monitoramento</div>
+      <h1>Checklist dos clientes</h1>
+      <div class="sub" id="subtitle">Carregando dados da planilha…</div>
+      <div class="scope" id="scope" hidden></div>
+    </div>
+    <div class="controls">
+      <div class="datebox cal-wrap" id="calWrap">
+        <button id="prev" aria-label="Período anterior" title="Voltar o período">‹</button>
+        <button id="rangeBtn" class="rangebtn" aria-haspopup="dialog" aria-expanded="false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          <span id="rangeTxt">—</span>
+        </button>
+        <button id="next" aria-label="Próximo período" title="Avançar o período">›</button>
+        <div class="cal-pop" id="calPop" role="dialog" aria-label="Escolher período" hidden>
+          <div class="cal-months" id="calMonths"></div>
+          <div class="cal-head">
+            <button id="calPrev" aria-label="Mês anterior">‹</button>
+            <b id="calTitle"></b>
+            <button id="calNext" aria-label="Próximo mês">›</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-hint" id="calHint">Clique no dia inicial e depois no dia final.</div>
+        </div>
+      </div>
+      
+      <button class="btn today" id="yesterday" title="Dia útil anterior">Ontem</button>
+      <button class="btn today" id="today">Hoje</button>
+      <button class="btn today" id="week" title="Últimos 7 dias, até hoje">7 dias</button>
+      <button class="btn today" id="month" title="Do dia 1º do mês até hoje">Mês</button>
+      <button class="btn" id="refresh" title="Buscar dados agora">
+        <svg id="refIco" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Atualizar
+      </button>
+      <a href="/" target="_blank" rel="noopener" class="btn today" title="Home">
+                  Home
+                </a>
+      <div class="sync" title="Atualização automática a cada 10 minutos">
+        <svg class="ring" viewBox="0 0 22 22"><circle class="bg" cx="11" cy="11" r="8"/><circle class="fg" id="ringFg" cx="11" cy="11" r="8" stroke-dasharray="50.27" stroke-dashoffset="0"/></svg>
+        <div><div>Atualizado <b id="lastSync">—</b></div><div>Próxima em <b id="countdown">10:00</b></div></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Resumo"></section>
+
+  <section class="filters">
+    <div class="chips" role="group" aria-label="Filtrar por situação" id="statusChips"></div>
+    <div class="fr">
+      <div class="ms" id="ms">
+        <button class="field ms-btn" id="msBtn" aria-haspopup="true" aria-expanded="false">Clientes: todos <span aria-hidden="true">▾</span></button>
+        <div class="ms-pop" id="msPop" hidden>
+          <input class="field" id="msQ" type="search" placeholder="Filtrar lista…" aria-label="Filtrar lista de clientes">
+          <div class="ms-acts"><span id="msCount"></span><span><button id="msAll">Marcar visíveis</button> · <button id="msNone">Limpar</button></span></div>
+          <div class="ms-list" id="msList"></div>
+        </div>
+      </div>
+      <select class="field" id="tech" aria-label="Filtrar por técnico"><option value="">Todos os técnicos</option></select>
+      <input class="field" id="q" type="search" placeholder="Buscar cliente ou ID…" aria-label="Buscar cliente ou ID">
+    </div>
+  </section>
+
+  <div class="active-filters" id="activeFilters" hidden></div>
+
+  <div class="legend">
+    <span><i class="dot ok"></i>Feito (com data de solução)</span>
+    <span><i class="dot bad"></i>Não feito (sem data de solução)</span>
+    <span><i class="dot wait"></i>Aguardando abertura</span>
+    <span><i class="dot none"></i>Sem chamado no dia</span>
+  </div>
+
+  <main id="main"></main>
+
+  <section id="techSection" hidden>
+    <div class="section-h"><h2>Por técnico</h2><span>Pendentes · feitos no dia selecionado. Clique para filtrar.</span></div>
+    <div class="techs" id="techs" style="margin-top:10px"></div>
+  </section>
+
+  <footer id="foot">Fonte: planilha do Google (relatório dos últimos 3 meses), entidade Checklist. Feito = chamado com data de solução.</footer>
+</div>
+
+<script>
+(() => {
+  // ID da planilha (trecho entre /d/ e /edit no link). Ela precisa estar
+  // compartilhada como "Qualquer pessoa com o link: Leitor".
+  // Fonte dos dados: planilha do Google (relatório dos últimos 3 meses).
+  // Ela precisa estar compartilhada como "Qualquer pessoa com o link: Leitor".
+  const SHEET_ID = "1Za1aWOh0U7K1SilH-d1MEBTCXQWi-ERvZfYm8MWRJS4";
+  const REFRESH_MS = 10 * 60 * 1000;
+  // A consulta SQL aplica CONVERT_TZ(-03:00) sobre horários já locais do GLPI,
+  // então 08:00 aparece como 05:00. Esta correção devolve o horário real.
+  // Se a consulta for ajustada (sem CONVERT_TZ), troque para 0.
+  const HOUR_FIX = 3;
+  // Link do chamado no GLPI (o ID do checklist entra no final)
+  const TICKET_URL = "https://suporte.coreplan.com.br/front/ticket.form.php?id=";
+  const AFTERNOON_FROM = 12; // abertura a partir de 12h = checklist da tarde
+
+  // Escala de técnicos (manhã 08:00 / tarde 15:00) por cliente
+  const SCALE = [
+    ["PGE -Espírito Santo","Eduardo","Eduardo"],
+    ["PGE - Maranhão","Erick","Erick"],
+    ["PGE - Mato Grosso","Victor","Victor"],
+    ["PGM - Aracruz/ES","Athila","Athila"],
+    ["PGM - Cariacica/ES","Athila","Athila"],
+    ["PGM - Cuiabá/MT","Julia","Yuri"],
+    ["PGM - João Pessoa/PB","Angelo","Angelo"],
+    ["PGM - Juiz de Fora/MG","Izadora","Marinho"],
+    ["PGM - Maceió/AL","Allan","Marinho"],
+    ["PGM - Niterói/RJ","Flávio","Flávio"],
+    ["PGM Santo Antônio de Jesus/BA","Julia","Sarah"],
+    ["PGM - São Luís/MA","Daysa","Jefferson"],
+    ["PGM - Linhares/ES","Allan","Marinho"],
+    ["PGM - LINHARES IPASLI/ES","Allan","Marinho"],
+    ["PGM - LINHARES SAAE/ES","Allan","Marinho"],
+    ["PGM - Teresina/PI","Izadora","Izadora"],
+    ["PGM - Tianguá/CE","Jessica","Allan"],
+    ["PGM - Viana/ES","Gabriely","Gabriely"],
+    ["PGM - Vitória/ES","Izadora","Izadora"],
+    ["PGM - Jaboatão dos Guararapes/PE","Allan","Yuri"],
+    ["PGM - Aquiraz/CE","Gizelle","Yuri"],
+    ["PGE - Paraíba/PB","Allan","Jessica"],
+    ["PBPrev - Previdência/PB","Jessica","Allan"],
+    ["PGM - Camaragibe/PE","Izadora","Juliana"],
+    ["PGM - Curvelo/MG","Jessica","Sarah"],
+    ["PGM - Campos dos Goytacazes/RJ","Izadora","Juliana"],
+    ["PGM - Ilhéus/BA","Jessica","Juliana"],
+    ["PG - Distrito Federal/DF","Clara","Priscila"],
+    ["CAGEPA - Paraíba/PB","Julia","Julia"],
+    ["IPAM - Previdência São Luis/MA","Jefferson","Daysa"],
+    ["PGM - Amargosa/BA","Gizelle","Sarah"],
+    ["PGM - Araruama/RJ","Jessica","Marinho"],
+    ["PGM - Lucas do Rio Verde/MT","Julia","Juliana"],
+    ["UEPB - Universidade Federal/PB","Jessica","Sarah"],
+    ["PGM - Santa Luzia/MG","Julia","Sarah"],
+    ["PGM - Cachoeiro de Itapimirim/ES","Gabriely","Gabriely"],
+  ];
+  const norm = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const SCALE_MAP = new Map(SCALE.map(([c,m,t]) => [norm(c), {m,t}]));
+
+  const $ = id => document.getElementById(id);
+  const state = {
+    rows: [], byDate: new Map(), dates: [],
+    from: null, to: null, preset: "today",
+    status: "all", tech: "", q: "", shift: "all", clients: new Set(),
+    lastSync: null, nextAt: Date.now() + REFRESH_MS, loading: false, error: null,
+  };
+
+  // ---------- helpers ----------
+  const pad = n => String(n).padStart(2,"0");
+  const isoLocal = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const todayIso = () => isoLocal(new Date());
+  // ontem; se cair no fim de semana, volta para a sexta anterior
+  const prevBusinessDay = () => { const d = new Date(); d.setDate(d.getDate() - 1); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1); return isoLocal(d); };
+  const fmtBR = iso => { const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; };
+  const WEEK = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+  const weekday = iso => { const [y,m,d] = iso.split("-").map(Number); return WEEK[new Date(y,m-1,d).getDay()]; };
+  const shiftIso = (iso, n) => { const [y,m,d] = iso.split("-").map(Number); return isoLocal(new Date(y,m-1,d+n)); };
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  function parseBR(s){
+    // "28/09/2026 05:00" ou "28/09/2026, 05:00"
+    const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})[ ,]+(\d{1,2}):(\d{2})/.exec(s||"");
+    if (!m) return null;
+    const d = new Date(Date.UTC(+m[3], +m[2]-1, +m[1], +m[4] + HOUR_FIX, +m[5]));
+    return { iso: `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`, h: d.getUTCHours(), hm: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}` };
+  }
+
+  function parseCSV(text){
+    const out = []; let row = [], f = "", q = false;
+    for (let i = 0; i < text.length; i++){
+      const c = text[i];
+      if (q){
+        if (c === '"'){ if (text[i+1] === '"'){ f += '"'; i++; } else q = false; }
+        else f += c;
+      } else if (c === '"') q = true;
+      else if (c === ","){ row.push(f); f = ""; }
+      else if (c === "\n"){ row.push(f); out.push(row); row = []; f = ""; }
+      else if (c !== "\r") f += c;
+    }
+    if (f || row.length){ row.push(f); out.push(row); }
+    return out;
+  }
+
+  const decodeEntities = s => String(s).replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  function cleanClient(title){
+    const parts = decodeEntities(title).split("->");
+    return parts[parts.length-1].trim();
+  }
+  const UF_FALLBACK = { pgemaranhao: "MA", pgematogrosso: "MT", pgeespiritosanto: "ES" };
+  function splitUF(name){
+    const m = /\/([A-Z]{2})\s*$/.exec(name);
+    const label = (m ? name.slice(0, m.index) : name).replace(/\s-(?=\S)/g, " - ").trim();
+    return { label, uf: m ? m[1] : (UF_FALLBACK[norm(name)] || "") };
+  }
+
+  function ingest(csvText){
+    const table = parseCSV(csvText);
+    if (!table.length) throw { code: "empty" };
+    const head = table[0].map(h => norm(h));
+    const col = n => head.indexOf(norm(n));
+    const iE = col("Entidade"), iId = col("ID"), iT = col("Titulo"), iA = col("Data_abertura"), iS = col("Data_solucao");
+    if ([iE,iId,iT,iA].some(i => i < 0)) throw { code: "columns" };
+    const byDate = new Map();
+    for (let r = 1; r < table.length; r++){
+      const row = table[r];
+      if (norm(row[iE]) !== "checklist") continue;
+      const open = parseBR(row[iA]); if (!open) continue;
+      const solvedRaw = (row[iS] || "").trim();
+      const solved = solvedRaw ? parseBR(solvedRaw) : null;
+      const client = cleanClient(row[iT]);
+      const key = norm(client);
+      const shift = open.h >= AFTERNOON_FROM ? "t" : "m";
+      if (!byDate.has(open.iso)) byDate.set(open.iso, new Map());
+      const day = byDate.get(open.iso);
+      if (!day.has(key)) day.set(key, { key, name: client, m: null, t: null });
+      const ent = day.get(key);
+      const rec = { id: row[iId], open: open.hm, done: !!solvedRaw, solved: solved ? solved.hm : (solvedRaw ? solvedRaw : "") };
+      // se houver duplicado no mesmo turno, fica o mais recente (maior ID)
+      if (!ent[shift] || Number(rec.id) > Number(ent[shift].id)) ent[shift] = rec;
+    }
+    state.byDate = byDate;
+    state.dates = [...byDate.keys()].sort();
+  }
+
+  // Datas do período (inclusive)
+  function rangeDays(from, to){ const out = []; for (let d = from; d <= to; d = shiftIso(d, 1)) out.push(d); return out; }
+  const daysBetween = (a, b) => { const [y1,m1,d1] = a.split("-").map(Number), [y2,m2,d2] = b.split("-").map(Number); return Math.round((Date.UTC(y2,m2-1,d2) - Date.UTC(y1,m1-1,d1)) / 864e5); };
+  const isSingle = () => state.from === state.to;
+
+  // Clientes do período: os da escala + os que tiverem chamado no período.
+  // Cada cliente tem a lista de checklists (dia + turno) do período.
+  function periodClients(from, to){
+    const single = from === to;
+    const days = rangeDays(from, to);
+    const map = new Map();
+    for (const [c] of SCALE) map.set(norm(c), { key: norm(c), name: c, items: [] });
+    const today = todayIso(), nowH = new Date().getHours();
+    for (const iso of days){
+      const day = state.byDate.get(iso);
+      if (day) for (const [k, ent] of day){
+        if (!map.has(k)) map.set(k, { key: k, name: ent.name, items: [] });
+        map.get(k).name = ent.name;
+      }
+      for (const c of map.values()){
+        const ent = day && day.get(c.key);
+        const sc = SCALE_MAP.get(c.key) || { m: "—", t: "—" };
+        for (const sh of ["M","T"]){
+          const rec = ent ? ent[sh.toLowerCase()] : null;
+          let st;
+          if (rec) st = rec.done ? "ok" : "bad";
+          else if (!single) continue; // no período só entram checklists abertos
+          else st = (iso > today || (iso === today && nowH < (sh === "M" ? 8 : 15))) ? "wait" : "none";
+          c.items.push({ iso, sh, rec, st, tech: sh === "M" ? sc.m : sc.t });
+        }
+      }
+    }
+    return [...map.values()].map(c => {
+      const sc = SCALE_MAP.get(c.key) || { m: "—", t: "—" };
+      const { label, uf } = splitUF(c.name);
+      return { ...c, label, uf, techM: sc.m, techT: sc.t };
+    }).sort((a,b) => a.label.localeCompare(b.label, "pt-BR"));
+  }
+
+  // ---------- render ----------
+  const SH_NAME = { M: "Manhã", T: "Tarde" };
+  const WEEK_SHORT = ["dom","seg","ter","qua","qui","sex","sáb"];
+  const shortDate = iso => { const [y,m,d] = iso.split("-").map(Number); return `${pad(d)}/${pad(m)} <em>${WEEK_SHORT[new Date(y,m-1,d).getDay()]}</em>`; };
+
+  function render(){
+    const { from, to } = state;
+    const single = from === to;
+    $("rangeTxt").textContent = from === to ? fmtBR(from) : `${fmtBR(from)} – ${fmtBR(to)}`;
+    const bd = bounds();
+    if (!$("calPop").hidden) renderCal();
+    $("prev").disabled = !!bd && from <= bd.min;
+    $("next").disabled = !!bd && to >= bd.max;
+    const yb = prevBusinessDay(), tb = todayIso();
+    $("yesterday").disabled = !!bd && (yb < bd.min || yb > bd.max);
+    $("today").disabled = !!bd && (tb < bd.min || tb > bd.max);
+    if (bd){ $("scope").hidden = false; $("scope").innerHTML = `Dados dos últimos 3 meses: <b>${fmtBR(bd.min)}</b> a <b>${fmtBR(bd.max)}</b>`; }
+    const t = todayIso();
+    $("today").classList.toggle("active", single && from === t);
+    $("yesterday").classList.toggle("active", single && from === prevBusinessDay());
+    $("week").classList.toggle("active", state.preset === "week");
+    $("month").classList.toggle("active", state.preset === "month");
+    $("prev").title = single ? "Dia anterior" : "Período anterior";
+    $("next").title = single ? "Próximo dia" : "Próximo período";
+
+    const daysWithData = rangeDays(from, to).filter(d => state.byDate.has(d));
+    const hasData = daysWithData.length > 0;
+    const everyone = periodClients(from, to);
+    state.lastEveryone = everyone;
+    const base = state.clients.size ? everyone.filter(c => state.clients.has(c.key)) : everyone;
+    const shifts = state.shift === "all" ? ["M","T"] : [state.shift];
+    const inShift = it => shifts.includes(it.sh);
+    const vis = c => c.items.filter(it => inShift(it) && (!state.tech || it.tech === state.tech));
+
+    // KPIs (respeitam seleção de clientes)
+    const all = base.flatMap(c => c.items);
+    const cnt = (sh, v) => all.filter(it => it.sh === sh && it.st === v).length;
+    const mOk = cnt("M","ok"), mBad = cnt("M","bad"), tOk = cnt("T","ok"), tBad = cnt("T","bad");
+    const mTot = mOk + mBad, tTot = tOk + tBad;
+    const tot = mTot + tTot, ok = mOk + tOk, bad = mBad + tBad;
+    const pct = tot ? Math.round(ok / tot * 100) : 0;
+    const clean = base.filter(c => { const its = c.items.filter(inShift); return its.length && its.every(it => it.st === "ok"); }).length;
+    const barHtml = (o, b, total) => total ? `<div class="bar"><i style="width:${o/total*100}%;background:var(--ok)"></i><i style="width:${b/total*100}%;background:var(--bad)"></i></div>` : `<div class="bar"></div>`;
+    const hint = k => state.shift === k ? `<em>filtrando · limpar</em>` : `<em>ver só ${SH_NAME[k].toLowerCase()}</em>`;
+    $("kpis").innerHTML = `
+      <button class="kpi" data-shift="all" aria-pressed="${state.shift==="all"}"><div class="lbl">Conclusão ${single ? "do dia" : "no período"}</div><div class="val">${pct}<small>%</small></div>${barHtml(ok,bad,tot)}<div class="foot"><span style="color:var(--ok)">${ok} feitos</span><span style="color:var(--bad)">${bad} pendentes</span></div></button>
+      <button class="kpi" data-shift="M" aria-pressed="${state.shift==="M"}"><div class="lbl">Manhã · 08h ${hint("M")}</div><div class="val">${mOk}<small> / ${mTot}</small></div>${barHtml(mOk,mBad,mTot)}<div class="foot"><span style="color:var(--bad)">${mBad} não feitos</span>${cnt("M","wait") ? `<span style="color:var(--wait)">${cnt("M","wait")} aguardando</span>`:""}</div></button>
+      <button class="kpi" data-shift="T" aria-pressed="${state.shift==="T"}"><div class="lbl">Tarde · 15h ${hint("T")}</div><div class="val">${tOk}<small> / ${tTot}</small></div>${barHtml(tOk,tBad,tTot)}<div class="foot"><span style="color:var(--bad)">${tBad} não feitos</span>${cnt("T","wait") ? `<span style="color:var(--wait)">${cnt("T","wait")} aguardando</span>`:""}</div></button>
+      <button class="kpi" data-shift="all" aria-pressed="false"><div class="lbl">Clientes ${state.clients.size ? "selecionados" : "monitorados"}</div><div class="val">${base.length}</div><div class="bar"><i style="width:${base.length ? clean/base.length*100 : 0}%;background:var(--accent)"></i></div><div class="foot"><span style="color:var(--accent)">${clean} com tudo feito</span></div></button>`;
+
+    // subtitle
+    if (single){
+      const dayName = weekday(from);
+      $("subtitle").textContent = `${dayName.charAt(0).toUpperCase()+dayName.slice(1)}, ${fmtBR(from)}${from === t ? " · hoje" : ""}`;
+    } else {
+      $("subtitle").textContent = `Período de ${fmtBR(from)} a ${fmtBR(to)} · ${daysWithData.length} dia${daysWithData.length === 1 ? "" : "s"} com checklist`;
+    }
+
+    // status chips
+    const anyBad = c => vis(c).some(it => it.st === "bad");
+    const anyOk = c => vis(c).some(it => it.st === "ok");
+    // "Com pendência" mostra só os checklists não feitos; "Tudo feito" só os feitos
+    const rowMatch = it => state.status === "bad" ? it.st === "bad" : state.status === "ok" ? it.st === "ok" : true;
+    const counts = { all: base.length, bad: base.filter(anyBad).length, ok: base.filter(anyOk).length };
+    const chips = [["all","Todos"],["bad","Com pendência"],["ok","Tudo feito"]];
+    $("statusChips").innerHTML = chips.map(([k,l]) => `<button class="chip" data-st="${k}" aria-pressed="${state.status===k}">${l} <b>${counts[k]}</b></button>`).join("");
+
+    // tech select
+    const techs = [...new Set(SCALE.flatMap(([,m,tt]) => [m,tt]))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    const sel = $("tech");
+    if (sel.options.length !== techs.length + 1){
+      sel.innerHTML = `<option value="">Todos os técnicos</option>` + techs.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+    }
+    sel.value = state.tech;
+
+    // botão de clientes
+    const n = state.clients.size;
+    $("msBtn").innerHTML = `${n ? `Clientes: ${n} selecionado${n>1?"s":""}` : "Clientes: todos"} <span aria-hidden="true">▾</span>`;
+    $("msBtn").classList.toggle("on", n > 0);
+    $("msCount").textContent = n ? `${n} selecionado${n>1?"s":""}` : "Nenhum = todos";
+
+    // filtros ativos
+    const tags = [];
+    if (state.shift !== "all") tags.push(`<span class="tag">Turno: ${SH_NAME[state.shift]}<button data-clear="shift" aria-label="Remover filtro de turno">×</button></span>`);
+    if (n) tags.push(`<span class="tag">${n} cliente${n>1?"s":""}<button data-clear="clients" aria-label="Remover filtro de clientes">×</button></span>`);
+    if (state.tech) tags.push(`<span class="tag">Técnico: ${esc(state.tech)}<button data-clear="tech" aria-label="Remover filtro de técnico">×</button></span>`);
+    $("activeFilters").innerHTML = tags.length ? `Filtros: ${tags.join("")}` : "";
+    $("activeFilters").hidden = !tags.length;
+
+    // filtering
+    const q = norm(state.q), qRaw = state.q.trim();
+    let list = base;
+    if (state.tech) list = list.filter(c => vis(c).length > 0);
+    if (!single) list = list.filter(c => vis(c).length > 0);
+    if (state.status === "bad") list = list.filter(anyBad);
+    if (state.status === "ok") list = list.filter(anyOk);
+    if (q) list = list.filter(c => norm(c.name).includes(q) || vis(c).some(it => it.rec && it.rec.id.includes(qRaw)));
+    const nBad = c => vis(c).filter(it => it.st === "bad").length;
+    const nOk = c => vis(c).filter(it => it.st === "ok").length;
+    list = state.status === "ok"
+      ? [...list].sort((a,b) => nOk(b) - nOk(a) || a.label.localeCompare(b.label,"pt-BR"))
+      : [...list].sort((a,b) => (nBad(b) > 0) - (nBad(a) > 0) || nBad(b) - nBad(a) || a.label.localeCompare(b.label,"pt-BR"));
+
+    const main = $("main");
+    if (state.error && !state.byDate.size){
+      main.innerHTML = errorHtml(state.error);
+      bindRetry();
+    } else if (!state.byDate.size){
+      main.innerHTML = `<div class="state"><svg class="spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/></svg><h3>Buscando a planilha…</h3><div>Lendo os chamados da entidade Checklist na planilha.</div></div>`;
+    } else if (!hasData){
+      const prev = [...state.dates].reverse().find(d => d < from);
+      main.innerHTML = `<div class="state"><h3>Nenhum checklist aberto ${single ? `em ${fmtBR(from)}` : `de ${fmtBR(from)} a ${fmtBR(to)}`}</h3><div>Não há chamados da entidade Checklist ${single ? "nessa data" : "nesse período"} (fim de semana, feriado ou fora do período da planilha).</div>${prev ? `<button class="btn" id="goPrev">Ver ${fmtBR(prev)}</button>`:""}</div>`;
+      if (prev) $("goPrev").onclick = () => setRange(prev, prev, "custom");
+    } else if (!list.length){
+      main.innerHTML = `<div class="state"><h3>Nenhum cliente com esses filtros</h3><div>Remova algum filtro acima para ver mais clientes.</div></div>`;
+    } else {
+      main.innerHTML = `<div class="grid">${list.map(c => cardHtml(c, vis(c), single, vis(c).filter(rowMatch))).join("")}</div>`;
+    }
+
+    // tech summary
+    if (hasData){
+      const agg = techs.map(x => {
+        let p = 0, d = 0;
+        for (const c of base) for (const it of c.items){
+          if (it.tech !== x || !inShift(it)) continue;
+          if (it.st === "bad") p++; if (it.st === "ok") d++;
+        }
+        return { t: x, p, d };
+      }).filter(x => x.p + x.d > 0).sort((a,b) => b.p - a.p || a.t.localeCompare(b.t,"pt-BR"));
+      $("techs").innerHTML = agg.map(x => `<button class="tech" data-tech="${esc(x.t)}" aria-pressed="${state.tech===x.t}"><span>${esc(x.t)}</span><span class="n"><span class="p" title="Pendentes">${x.p} pend.</span><span class="d" title="Feitos">${x.d} ok</span></span></button>`).join("");
+      $("techSection").querySelector(".section-h span").textContent = `Pendentes · feitos ${single ? "no dia" : "no período"}. Clique para filtrar.`;
+      $("techSection").hidden = !agg.length;
+    } else $("techSection").hidden = true;
+  }
+
+  const LABEL = { ok: "Feito", bad: "Não feito", wait: "Aguardando", none: "Sem chamado" };
+  function rowHtml(it, withDate){
+    const { rec, st, sh, tech } = it;
+    const hl = state.tech && tech === state.tech ? ` style="color:var(--accent)"` : "";
+    let right2 = LABEL[st];
+    if (st === "ok" && rec.solved) right2 = `Feito ${esc(rec.solved)}`;
+    const inner = `
+      <span class="dot ${st}" role="img" aria-label="${LABEL[st]}"></span>
+      <span class="nm">${withDate ? `<span class="dt">${shortDate(it.iso)}</span>` : ""}${SH_NAME[sh]}<em>${sh === "M" ? "08h" : "15h"}</em></span>
+      <span class="id">${rec ? "#" + esc(rec.id) : "—"}</span>
+      <span class="tec"${hl}>${esc(tech)}</span>
+      <span class="st ${st}">${right2}</span>`;
+    return rec
+      ? `<a class="shift" href="${TICKET_URL}${encodeURIComponent(rec.id)}" target="_blank" rel="noopener" title="Abrir o chamado #${esc(rec.id)} no GLPI">${inner}</a>`
+      : `<div class="shift">${inner}</div>`;
+  }
+  function cardHtml(c, items, single, shown){
+    const opened = items.filter(it => it.st === "ok" || it.st === "bad");
+    const done = opened.filter(it => it.st === "ok").length;
+    const pend = opened.length - done;
+    const alert = shown.some(it => it.st === "bad");
+    const full = opened.length && done === opened.length;
+    const head = `<div class="card-h">${c.uf ? `<span class="uf">${esc(c.uf)}</span>` : ""}<h3>${esc(c.label)}</h3>`;
+    if (single){
+      return `<article class="card${alert ? " alert" : ""}">
+        ${head}<span class="score${full ? " full" : ""}">${done}/${opened.length || items.length}</span></div>
+        ${shown.map(it => rowHtml(it, false)).join("")}
+      </article>`;
+    }
+    const rows = [...shown].sort((a,b) => b.iso.localeCompare(a.iso) || (a.sh === "M" ? -1 : 1));
+    return `<article class="card${alert ? " alert" : ""}">
+      ${head}<span class="score big${full ? " full" : ""}" title="Feitos / total de checklists no período">${done}<small>/${opened.length}</small></span></div>
+      <div class="pbar"><i style="width:${opened.length ? done/opened.length*100 : 0}%;background:var(--ok)"></i><i style="width:${opened.length ? pend/opened.length*100 : 0}%;background:var(--bad)"></i></div>
+      <div class="card-sub"><span class="d">${done} feito${done === 1 ? "" : "s"}</span><span class="p">${pend} pendente${pend === 1 ? "" : "s"}</span></div>
+      <div class="rows">${rows.map(it => rowHtml(it, true)).join("")}</div>
+    </article>`;
+  }
+
+  // ---------- multi-seleção de clientes ----------
+  const LS_KEY = "painelChecklist.clientes";
+  try { const v = JSON.parse(localStorage.getItem(LS_KEY) || "[]"); if (Array.isArray(v)) state.clients = new Set(v); } catch(_) {}
+  const saveClients = () => { try { localStorage.setItem(LS_KEY, JSON.stringify([...state.clients])); } catch(_) {} };
+  function msVisible(){
+    const q = norm($("msQ").value);
+    return (state.lastEveryone || []).filter(c => !q || norm(c.name).includes(q));
+  }
+  function renderMsList(){
+    const items = msVisible();
+    $("msList").innerHTML = items.map(c => `<label><input type="checkbox" data-key="${esc(c.key)}" ${state.clients.has(c.key) ? "checked" : ""}><span>${esc(c.label)}</span><span class="u">${esc(c.uf)}</span></label>`).join("") || `<div style="padding:8px;color:var(--muted)">Nenhum cliente encontrado.</div>`;
+    $("msCount").textContent = state.clients.size ? `${state.clients.size} selecionado${state.clients.size>1?"s":""}` : "Nenhum = todos";
+  }
+  function toggleMs(open){
+    $("msPop").hidden = !open;
+    $("msBtn").setAttribute("aria-expanded", String(open));
+    if (open){ renderMsList(); $("msQ").focus(); }
+  }
+
+  function errorHtml(e){
+    const code = e && e.code;
+    const msgs = {
+      private: ["Não foi possível ler a planilha", "Verifique a internet e se a planilha está compartilhada como “Qualquer pessoa com o link: Leitor” (Compartilhar → Acesso geral)."],
+      query: ["Erro ao consultar a planilha", (e && e.message || "") + " Confira se a aba com os dados é a primeira da planilha."],
+      columns: ["Colunas não encontradas", "A planilha precisa das colunas Entidade, ID, Titulo, Data_abertura e Data_solucao."],
+      empty: ["Planilha vazia", "A consulta voltou sem linhas."],
+    };
+    const [h, p] = msgs[code] || ["Não foi possível ler a planilha", (e && e.message) || "O Google Drive não respondeu. Tente de novo em instantes."];
+    const canRetry = true;
+    return `<div class="state"><h3>${esc(h)}</h3><div>${esc(p)}</div>${canRetry ? `<button class="btn" id="retry">Tentar de novo</button>` : ""}</div>`;
+  }
+  function bindRetry(){ const b = $("retry"); if (b) b.onclick = () => load(true); }
+
+  // ---------- data (Google Sheets público, sem login) ----------
+  const COLS = ["Entidade","ID","Titulo","Tecnico","Data_abertura","Data_solucao"];
+  const gvizUrl = (extra, withQuery) => {
+    const u = new URL(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`);
+    u.searchParams.set("headers", "1");
+    if (withQuery) u.searchParams.set("tq", "SELECT * WHERE A = 'Checklist'");
+    u.searchParams.set("tqx", extra);
+    u.searchParams.set("_", Date.now());
+    return u.toString();
+  };
+
+  // JSONP: funciona até abrindo o arquivo direto do computador (file://)
+  function jsonp(withQuery){
+    return new Promise((resolve, reject) => {
+      const cb = "__gviz_" + Math.random().toString(36).slice(2);
+      const s = document.createElement("script");
+      const done = () => { delete window[cb]; s.remove(); clearTimeout(t); };
+      const t = setTimeout(() => { done(); reject({ code: "timeout" }); }, 30000);
+      window[cb] = data => { done(); resolve(data); };
+      s.onerror = () => { done(); reject({ code: "network" }); };
+      s.src = gvizUrl(`out:json;responseHandler:${cb}`, withQuery);
+      document.head.appendChild(s);
+    });
+  }
+  function cellText(c){
+    if (!c) return "";
+    const v = c.v;
+    if (typeof v === "string"){
+      const m = /^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+))?/.exec(v);
+      if (m) return `${pad(+m[3])}/${pad(+m[2]+1)}/${m[1]} ${pad(+(m[4]||0))}:${pad(+(m[5]||0))}`;
+      return v;
+    }
+    if (v == null) return "";
+    if (typeof v === "number" && c.f == null) return String(v);
+    return c.f != null ? String(c.f) : String(v);
+  }
+  function tableToCsvRows(data){
+    if (!data || data.status === "error"){
+      const d = data && data.errors && data.errors[0];
+      throw { code: d && /access|permiss|denied/i.test(d.reason + d.message) ? "private" : "query", message: d ? (d.detailed_message || d.message) : "" };
+    }
+    const cols = data.table.cols.map((c, i) => (c.label || "").trim() || COLS[i] || c.id);
+    const rows = data.table.rows.map(r => cols.map((_, i) => cellText(r.c[i])));
+    return [cols, ...rows];
+  }
+  const toCsv = rows => rows.map(r => r.map(v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g,'""')}"` : v).join(",")).join("\n");
+
+  async function fetchSheet(){
+    try { return toCsv(tableToCsvRows(await jsonp(true))); }
+    catch (e) {
+      if (e.code === "query") return toCsv(tableToCsvRows(await jsonp(false)));
+      if (e.code === "network" || e.code === "timeout"){
+        // alternativa: CSV direto (exige que o navegador permita a requisição)
+        const r = await fetch(gvizUrl("out:csv", false), { cache: "no-store" }).catch(() => null);
+        if (r && r.ok){ const t = await r.text(); if (/Entidade/i.test(t.slice(0,300))) return t; }
+        throw { code: "private" };
+      }
+      throw e;
+    }
+  }
+
+  async function fetchData(){ return fetchSheet(); }
+
+  async function load(manual){
+    if (state.loading) return;
+    state.loading = true; $("refIco").classList.add("spin");
+    try {
+      ingest(await fetchData());
+      state.error = null;
+      state.lastSync = new Date();
+      $("lastSync").textContent = state.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      $("foot").textContent = `Fonte: planilha do Google (relatório dos últimos 3 meses), entidade Checklist · ${state.dates.length} dias com dados. Feito = chamado com data de solução.`;
+    } catch (e) {
+      state.error = e || { code: "network" };
+      $("lastSync").textContent = state.byDate.size ? "falhou, mostrando dados anteriores" : "falhou";
+    } finally {
+      state.loading = false; $("refIco").classList.remove("spin");
+      state.nextAt = Date.now() + REFRESH_MS;
+      applyPreset();
+      render();
+    }
+  }
+
+  // Presets que acompanham o dia atual (virada do dia, recarga)
+  function presetRange(p){
+    const t = todayIso();
+    if (p === "today") return [t, t];
+    if (p === "week") return [shiftIso(t, -6), t];
+    if (p === "month") return [t.slice(0, 8) + "01", t];
+    return null;
+  }
+  // Limites: só é possível filtrar dentro das datas que existem nos dados
+  const bounds = () => state.dates.length ? { min: state.dates[0], max: state.dates[state.dates.length - 1] } : null;
+  const clampDay = d => { const b = bounds(); if (!b) return d; return d < b.min ? b.min : d > b.max ? b.max : d; };
+  function clampRange(){ state.from = clampDay(state.from); state.to = clampDay(state.to); if (state.from > state.to) state.from = state.to; }
+  function applyPreset(){ const r = presetRange(state.preset); if (r){ state.from = r[0]; state.to = r[1]; } clampRange(); }
+  function setRange(from, to, preset){
+    if (!from || !to) return;
+    if (from > to) [from, to] = [to, from];
+    state.from = from; state.to = to;
+    clampRange();
+    const t = todayIso();
+    state.preset = preset || ((from === t && to === t) ? "today" : "custom");
+    render();
+  }
+
+  // ---------- events ----------
+  // ---------- calendário do período (só mostra os meses com dados) ----------
+  const MONTHS = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const cal = { view: null, pending: null };
+  const ym = iso => iso.slice(0, 7);
+  const addMonth = (m, n) => { const [y, mo] = m.split("-").map(Number); const d = new Date(y, mo - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+  function renderCal(){
+    const b = bounds();
+    if (!b){ $("calGrid").innerHTML = `<div class="cal-hint" style="grid-column:1/-1">Carregando datas…</div>`; return; }
+    if (!cal.view || cal.view < ym(b.min) || cal.view > ym(b.max)) cal.view = ym(state.to);
+    const [y, mo] = cal.view.split("-").map(Number);
+    $("calTitle").textContent = `${MONTHS[mo - 1]} ${y}`;
+    $("calPrev").disabled = cal.view <= ym(b.min);
+    $("calNext").disabled = cal.view >= ym(b.max);
+    // atalhos: um botão por mês disponível
+    const months = []; for (let m = ym(b.min); m <= ym(b.max); m = addMonth(m, 1)) months.push(m);
+    $("calMonths").innerHTML = months.map(m => `<button data-month="${m}" title="Selecionar o mês inteiro">${MONTHS[+m.slice(5) - 1].slice(0,3)}/${m.slice(2,4)}</button>`).join("");
+    const first = new Date(y, mo - 1, 1).getDay(), days = new Date(y, mo, 0).getDate();
+    let html = ["dom","seg","ter","qua","qui","sex","sáb"].map(w => `<span class="wd">${w}</span>`).join("");
+    for (let i = 0; i < first; i++) html += `<span></span>`;
+    const t = todayIso();
+    for (let d = 1; d <= days; d++){
+      const iso = `${cal.view}-${pad(d)}`;
+      const out = iso < b.min || iso > b.max;
+      const cls = [
+        !state.byDate.has(iso) ? "nodata" : "",
+        !cal.pending && iso > state.from && iso < state.to ? "in" : "",
+        !cal.pending && (iso === state.from || iso === state.to) ? "edge" : "",
+        cal.pending === iso ? "pending" : "",
+        iso === t ? "today" : "",
+      ].filter(Boolean).join(" ");
+      html += `<button data-day="${iso}" class="${cls}" ${out ? "disabled" : ""} title="${fmtBR(iso)}${state.byDate.has(iso) ? "" : " · sem checklist"}">${d}</button>`;
+    }
+    $("calGrid").innerHTML = html;
+    $("calHint").textContent = cal.pending ? `Início: ${fmtBR(cal.pending)}. Agora clique no dia final (ou no mesmo dia).` : "Clique no dia inicial e depois no dia final.";
+  }
+  function toggleCal(open){
+    $("calPop").hidden = !open;
+    $("rangeBtn").setAttribute("aria-expanded", String(open));
+    if (open){ cal.pending = null; cal.view = ym(state.to); renderCal(); }
+  }
+  $("rangeBtn").onclick = e => { e.stopPropagation(); toggleCal($("calPop").hidden); };
+  $("calPrev").onclick = () => { cal.view = addMonth(cal.view, -1); renderCal(); };
+  $("calNext").onclick = () => { cal.view = addMonth(cal.view, 1); renderCal(); };
+  $("calGrid").addEventListener("click", e => {
+    const bt = e.target.closest("[data-day]"); if (!bt || bt.disabled) return;
+    const d = bt.dataset.day;
+    if (!cal.pending){ cal.pending = d; renderCal(); return; }
+    const a = cal.pending < d ? cal.pending : d, z = cal.pending < d ? d : cal.pending;
+    cal.pending = null; toggleCal(false); setRange(a, z);
+  });
+  $("calMonths").addEventListener("click", e => {
+    const bt = e.target.closest("[data-month]"); if (!bt) return;
+    const m = bt.dataset.month, [y, mo] = m.split("-").map(Number);
+    toggleCal(false); setRange(`${m}-01`, `${m}-${pad(new Date(y, mo, 0).getDate())}`, "custom");
+  });
+  document.addEventListener("click", e => { if (!$("calPop").hidden && e.target.isConnected && !e.target.closest("#calWrap")) toggleCal(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("calPop").hidden){ toggleCal(false); $("rangeBtn").focus(); } });
+  const step = dir => {
+    const n = daysBetween(state.from, state.to) + 1, b = bounds();
+    let f = shiftIso(state.from, dir * n), t = shiftIso(state.to, dir * n);
+    if (b && f < b.min){ f = b.min; t = shiftIso(f, n - 1); }
+    if (b && t > b.max){ t = b.max; f = shiftIso(t, -(n - 1)); }
+    setRange(f, t);
+  };
+  $("prev").onclick = () => step(-1);
+  $("next").onclick = () => step(1);
+  $("today").onclick = () => setRange(todayIso(), todayIso(), "today");
+  $("yesterday").onclick = () => { const y = prevBusinessDay(); setRange(y, y, "custom"); };
+  $("week").onclick = () => { const r = presetRange("week"); setRange(r[0], r[1], "week"); };
+  $("month").onclick = () => { const r = presetRange("month"); setRange(r[0], r[1], "month"); };
+  $("kpis").addEventListener("click", e => { const b = e.target.closest("[data-shift]"); if (!b) return; const k = b.dataset.shift; state.shift = (k === "all" || state.shift === k) ? "all" : k; render(); });
+  $("activeFilters").addEventListener("click", e => { const b = e.target.closest("[data-clear]"); if (!b) return; const k = b.dataset.clear; if (k === "shift") state.shift = "all"; if (k === "tech") state.tech = ""; if (k === "clients"){ state.clients.clear(); saveClients(); } render(); });
+  $("msBtn").onclick = e => { e.stopPropagation(); toggleMs($("msPop").hidden); };
+  $("msQ").addEventListener("input", renderMsList);
+  $("msList").addEventListener("change", e => { const k = e.target.dataset.key; if (!k) return; e.target.checked ? state.clients.add(k) : state.clients.delete(k); saveClients(); render(); });
+  $("msAll").onclick = () => { msVisible().forEach(c => state.clients.add(c.key)); saveClients(); render(); renderMsList(); };
+  $("msNone").onclick = () => { state.clients.clear(); saveClients(); render(); renderMsList(); };
+  document.addEventListener("click", e => { if (!$("msPop").hidden && e.target.isConnected && !e.target.closest("#ms")) toggleMs(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("msPop").hidden){ toggleMs(false); $("msBtn").focus(); } });
+  $("refresh").onclick = () => load(true);
+  $("tech").addEventListener("change", e => { state.tech = e.target.value; render(); });
+  $("q").addEventListener("input", e => { state.q = e.target.value; render(); });
+  $("statusChips").addEventListener("click", e => { const b = e.target.closest("[data-st]"); if (b){ state.status = b.dataset.st; render(); } });
+  $("techs").addEventListener("click", e => { const b = e.target.closest("[data-tech]"); if (b){ state.tech = state.tech === b.dataset.tech ? "" : b.dataset.tech; render(); window.scrollTo({ top: 0, behavior: "smooth" }); } });
+
+  // contador + atualização automática a cada 10 min
+  setInterval(() => {
+    const left = Math.max(0, state.nextAt - Date.now());
+    $("countdown").textContent = `${Math.floor(left/60000)}:${pad(Math.floor(left/1000)%60)}`;
+    $("ringFg").style.strokeDashoffset = String(50.27 * (1 - left / REFRESH_MS));
+    if (left === 0 && !state.loading) load(false);
+    // virada do dia: se estava acompanhando "hoje", acompanha o novo dia
+    const r = presetRange(state.preset);
+    if (r){
+      let f = clampDay(r[0]), t2 = clampDay(r[1]); if (f > t2) f = t2;
+      if (f !== state.from || t2 !== state.to){ applyPreset(); render(); }
+    }
+  }, 1000);
+
+  applyPreset();
+  render();
+  load(false);
+})();
+</script>
+</body>
+</html>
