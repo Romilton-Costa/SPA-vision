@@ -1094,7 +1094,58 @@
             z-index: 3000;
             pointer-events: none;
         }
+        /* ── STATUS DOS TRIBUNAIS ── */
+#tribunais-section {
+    padding: 15px;
+    background: rgba(56, 189, 248, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.1);
+}
 
+.tribunal-card {
+    background: var(--surface);
+    border-radius: 10px;
+    border-left: 4px solid var(--green);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 200px;
+    transition: transform .15s, box-shadow .15s;
+}
+
+.tribunal-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+
+.tribunal-card.offline {
+    border-color: var(--red);
+    background: rgba(248, 113, 113, 0.06);
+    animation: pulse-red 2s infinite;
+}
+
+.tribunal-card .tribunal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.tribunal-card .tribunal-info .tribunal-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.tribunal-card .tribunal-info .tribunal-status {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.tribunal-card.online  .tribunal-status { color: var(--green); }
+.tribunal-card.offline .tribunal-status { color: var(--red); }
         #toast.show {
             opacity: 1;
             transform: translateY(0);
@@ -1386,8 +1437,18 @@
                 </h2>
                 <span id="sslLastCheck" style="font-size:11px; color:var(--muted); margin-left:auto;"></span>
             </div>
-            <div id="tribunaisStatus" class="cert-container"></div>
         </section>
+        <!-- ── STATUS DOS TRIBUNAIS ── -->
+<section id="tribunais-section">
+    <div class="section-header" style="margin-bottom:10px;">
+        <span style="font-size:18px;">🏛️</span>
+        <h2 style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">
+            Status dos Tribunais
+        </h2>
+        <span id="tribunaisLastCheck" style="font-size:11px; color:var(--muted); margin-left:auto;"></span>
+    </div>
+    <div id="tribunaisStatus" class="cert-container"></div>
+</section>
                 <!-- ── ROTINA DE EXPEDIENTES ── -->
         <section id="rotina-section">
             <div class="section-header" style="margin-bottom:10px;">
@@ -1700,38 +1761,65 @@
     }
 }
 
-        async function checkTribunaisStatus() {
-            const container = document.getElementById("tribunaisStatus");
-            if (!container) return;
+  async function checkTribunaisStatus() {
+    const container = document.getElementById("tribunaisStatus");
+    const lastCheck = document.getElementById("tribunaisLastCheck");
+    if (!container) return;
 
-            try {
-                const res = await fetch(`${API_BASE}/api/status/tribunais`);
-                const data = await res.json();
+    try {
+        const res = await fetch(`${API_BASE}/api/status/tribunais?t=${Date.now()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
-                if (!Array.isArray(data)) {
-                    console.error("Backend não retornou uma lista:", data);
-                    return;
-                }
-
-
-                container.innerHTML = ''; // Limpa a área
-
-                data.forEach(trib => {
-                    const isOk = trib.status === 'OK';
-                    container.innerHTML += `
-                <div style="background: var(--surface); padding: 10px 15px; border-radius: 8px; border-left: 4px solid ${isOk ? 'var(--green)' : 'var(--red)'}; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 13px; font-weight: 600;">${trib.nome}</span>
-                    <span style="color: ${isOk ? 'var(--green)' : 'var(--red)'}; font-size: 12px; font-weight: 700;">
-                        ${isOk ? '● ONLINE' : '● FORA DO AR'}
-                    </span>
-                </div>
-            `;
-                });
-            } catch (err) {
-                console.error("Erro ao checar tribunais:", err);
-            }
+        if (!Array.isArray(data)) {
+            console.error("Backend não retornou uma lista:", data);
+            return;
         }
 
+        container.innerHTML = '';
+
+        if (data.length === 0) {
+            container.innerHTML = `
+                <div class="tribunal-card" style="cursor:default; opacity:.6;">
+                    <div class="tribunal-info">
+                        <div class="tribunal-name">Nenhum tribunal configurado</div>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        data.forEach(trib => {
+            const isOk = trib.status === 'OK';
+            const card = document.createElement('div');
+            card.className = `tribunal-card ${isOk ? 'online' : 'offline'}`;
+            card.title = `HTTP ${trib.code || '—'}`;
+            card.innerHTML = `
+                <div class="tribunal-info">
+                    <div class="tribunal-name">${trib.nome}</div>
+                    <div class="tribunal-status">
+                        ${isOk ? '● ONLINE' : '● FORA DO AR'}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        if (lastCheck) {
+            lastCheck.textContent = `Verificado às ${new Date().toLocaleTimeString('pt-BR')}`;
+        }
+
+    } catch (err) {
+        console.error("Erro ao checar tribunais:", err);
+        container.innerHTML = `
+            <div class="tribunal-card offline" style="cursor:default;">
+                <div class="tribunal-info">
+                    <div class="tribunal-name">Falha ao consultar</div>
+                    <div class="tribunal-status">● ERRO</div>
+                </div>
+            </div>`;
+        if (lastCheck) lastCheck.textContent = '🔴 Erro de conexão';
+    }
+}
 
         function renderAll() {
             const filtered = rawData.filter(d => {
@@ -2097,6 +2185,7 @@
         fetchSSLCerts();
         fetchCpuUsage();
         fetchRotina();
+        checkTribunaisStatus()
 
         // ─── CADASTROS EM BRANCO ────────────────────────────────────────────────────
         async function fetchBlankNotices() {
@@ -2459,7 +2548,8 @@ const ROTINA_STATUS_LABEL = {
     'query_error': { label: 'ERRO QUERY', cls: 'status-error',      icon: '⚠️' },
     'auth_error':  { label: 'ERRO AUTH',  cls: 'status-error',      icon: '🔐' },
     'no_config':   { label: 'SEM CONFIG', cls: 'status-error',      icon: '⚙️' },
-    'DESATIVADO': { label: 'DESATIVADO', cls: 'status-desativado', icon: '⏸️' },
+    'Alerta':      { label: 'Alerta',cls: 'status-nao-rodou',        icon: '🔴' },
+    'DESATIVADO':{ label: 'DESATIVADO', cls: 'status-desativado', icon: '⏸️' },
 };
 
 let _rotinaAlertSuppressUntil = 0;

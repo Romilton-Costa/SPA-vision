@@ -120,7 +120,7 @@ def _compute_status(records: List[Dict[str, Any]]) -> str:
     if "OK" in statuses:
         return "OK"
     if all(s == "DESATIVADO" for s in statuses):
-        return "DESATIVADO"
+        return "Alerta"
     return "OK"
 
 
