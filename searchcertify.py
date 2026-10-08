@@ -1,9 +1,7 @@
 import socket
 import ssl
-
 from urllib.parse import urlparse
 from datetime import datetime, UTC
-
 
 def limpar_host(url):
 
@@ -97,8 +95,6 @@ sites = [
     "https://araruama.spa.coreplan.com.br/",
     "https://goytacazes.spa.coreplan.com.br/",
     "https://niteroi.spa.coreplan.com.br/",
-    "https://portovelho.spa.coreplan.com.br/",
-    "https://aracatuba.spa.coreplan.com.br/",
     "https://spa.pge.mt.gov.br/",
     "https://curvelo.spa.coreplan.com.br/",
     "https://joaopessoa.spa.coreplan.com.br/",
@@ -110,14 +106,11 @@ sites = [
     "https://paraiba.spa.coreplan.com.br/",
     "https://camaragibe.spa.coreplan.com.br/",
     "https://jaboatao.spa.coreplan.com.br/",
-    "https://sergipe.spa.coreplan.com.br/",
-    "https://spa.pgm.cuiaba.mt.gov.br/"
-
-
-
+    "https://spa.pgm.cuiaba.mt.gov.br/",
+    "https://cachoeiro.spa.coreplan.com.br/",
+    "https://ouropreto.spa.coreplan.com.br/"
 
 ]
-
 
 for site in sites:
 

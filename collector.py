@@ -1,11 +1,4 @@
-"""
-collector.py — Coleta dados dos Metabases configurados no .env
-- Fix: template-tags agora usa o formato correto para queries nativas com [[AND ...]]
-- Cache em memória com TTL de 1h por instância
-- Thread pool para coleta paralela
-- Cache SSL independente (TTL 1h, verificação assíncrona)
-- TTL separado de 20min para MB5 (Mato Grosso)
-"""
+
 from searchcertify import verificar_certificado, sites
 import requests
 import pandas as pd
@@ -22,39 +15,12 @@ from urllib3.util.retry import Retry
 
 load_dotenv()
 
-
 logger = logging.getLogger("zabbix_collector")
 
 # Leitura direta das variáveis de ambiente
 ZABBIX_URL = os.getenv("ZABBIX_API_URL")
 ZABBIX_TOKEN = os.getenv("ZABBIX_API_TOKEN")
 
-
-# ─── DNS OVERRIDE (equivalente ao hosts file, mas em nível de aplicação) ─────
-# Alguns clientes só expõem o Metabase por um hostname que não resolve via DNS
-# público — resolve apenas dentro da rede/VPN do cliente. Editar o arquivo
-# hosts do sistema operacional funciona numa máquina Windows individual, mas
-# não escala para um servidor web: não sobrevive a reprovisionamento, não
-# funciona em containers efêmeros e exige acesso de administrador na máquina.
-#
-# A solução equivalente para uma aplicação web é resolver isso na camada de
-# socket do próprio processo Python, sem tocar no SO. Isso é seguro porque:
-#   - o Host HTTP e o SNI/TLS continuam usando o hostname original (o
-#     `requests`/urllib3 monta ambos a partir da URL, não do IP resolvido);
-#   - a verificação de certificado (verify=True, padrão) continua ativa —
-#     NUNCA desative com verify=False para "resolver" um problema de DNS;
-#   - o override é restrito aos hosts explicitamente listados; qualquer
-#     outro domínio segue a resolução DNS normal.
-#
-# Configuração no .env (mesmo padrão dos prefixos de METABASES):
-#   DNS_OVERRIDES=metabase.spa.pg.df.gov.br=4.228.45.198,outro.host=1.2.3.4
-#
-# Importante: isso resolve apenas o problema de DNS. Se o servidor do cliente
-# também restringe acesso por IP de origem (firewall/allowlist), é necessário,
-# em paralelo, solicitar ao cliente que o IP público de saída DESTE servidor
-# (não da sua máquina local) seja liberado — verifique com `curl ifconfig.me`
-# a partir do próprio servidor, e use um IP fixo/Elastic IP se ele rodar em
-# nuvem com IP dinâmico.
 _original_getaddrinfo = socket.getaddrinfo
 
 
@@ -116,10 +82,48 @@ def zabbix_rpc_call(method: str, params: dict) -> dict:
     except Exception as e:
         logger.error(f"Falha ao conectar no Zabbix: {e}")
         return {}
+def get_zabbix_history(host_name: str, item_key: str = "system.cpu.util",
+                       hours: int = 24) -> List[Dict[str, Any]]:
+    """Retorna histórico de um item (CPU/Memória) para um host."""
+    hosts = zabbix_rpc_call("host.get", {
+        "output": ["hostid", "name"],
+        "filter": {"name": host_name},
+    })
+    if not hosts:
+        return []
+    host_id = hosts[0]["hostid"]
+
+    items = zabbix_rpc_call("item.get", {
+        "output": ["itemid", "key_", "lastvalue", "units"],
+        "hostids": [host_id],
+        "search": {"key_": item_key},
+        "filter": {"state": "0"},
+    })
+    if not items:
+        return []
+    item = items[0]
+
+    time_till = int(time.time())
+    time_from = time_till - hours * 3600
+
+    history = zabbix_rpc_call("history.get", {
+        "output": "extend",
+        "history": 0,  # 0 = float
+        "itemids": [item["itemid"]],
+        "time_from": time_from,
+        "time_till": time_till,
+        "sortfield": "clock",
+        "sortorder": "ASC",
+    })
+
+    if not isinstance(history, list):
+        return []
+
+    return [
+        {"t": int(h["clock"]) * 1000, "v": round(float(h["value"]), 2)}
+        for h in history
+    ]
 def get_zabbix_cpu_usage() -> Dict[str, Any]:
-    """
-    Retorna o mapeamento de instâncias/clientes com a respectiva taxa de uso de CPU (%).
-    """
     try:
         hosts = zabbix_rpc_call("host.get", {
             "output": ["hostid", "name", "host"],

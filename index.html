@@ -1,2926 +1,510 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPA — Monitoramento de Expedientes</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --border: #334155;
-            --text: #f1f5f9;
-            --muted: #94a3b8;
-            --accent: #38bdf8;
-            --green: #4ade80;
-            --pink: #f472b6;
-            --red: #f87171;
-            --yellow: #fbbf24;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            padding: 40px 50px;
-            max-width: 1800px;
-            margin: 0 auto;
-        }
-
-        /* ── HEADER ── */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin-bottom: 32px;
-        }
-
-        .header-left h3 {
-            font-size: 26px;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .header-left .subtitle {
-            font-size: 16px;
-            color: var(--muted);
-            margin-top: 4px;
-        }
-
-        /* ── BADGE CACHE ── */
-        #cacheBadge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: #1e293b;
-            border: 1px solid var(--border);
-            color: var(--muted);
-            margin-top: 8px;
-        }
-
-        #cacheBadge .dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--green);
-            animation: pulse 2s infinite;
-        }
-
-        #cacheBadge.stale .dot {
-            background: var(--yellow);
-            animation: none;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: .4;
-            }
-        }
-
-        /* ── FILTROS ── */
-        .toolbar {
-            display: flex;
-            flex-direction: row;
-            gap: 12px;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .date-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .date-group label {
-            font-size: 11px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .05em;
-        }
-
-        .date-group input[type="date"] {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            outline: none;
-            transition: border-color .2s, box-shadow .2s;
-        }
-
-        .date-group input[type="date"]:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, .15);
-        }
-        .rotina-card.status-desativado  { border-color: var(--muted); background: rgba(148,163,184,.05); }
-        .rotina-card.status-desativado .rc-status { background: rgba(148,163,184,.15); color: var(--muted); }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--text);
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: .2s;
-        }
-
-        .btn.active {
-            background: var(--accent) !important;
-            /* Cor azul que você já usa */
-            color: var(--bg) !important;
-            /* Cor do texto escura para contraste */
-            font-weight: 600;
-            border-color: var(--accent);
-        }
-
-        .btn:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .btn.primary {
-            background: var(--accent);
-            color: #0f172a;
-            border-color: transparent;
-            font-weight: 600;
-        }
-
-        .btn.primary:hover {
-            opacity: .85;
-        }
-
-        .btn.active {
-            background: var(--accent);
-            color: #0f172a;
-            border-color: transparent;
-            font-weight: 700;
-        }
-
-        /* ── SUMMARY BAR ── */
-        .summary-bar {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 32px;
-        }
-
-        .summary-card {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 25px 30px;
-            flex: 1;
-            min-width: 250px;
-            border-top: 4px solid var(--accent);
-        }
-
-        .summary-card.pge {
-            border-color: var(--green);
-        }
-
-        .summary-card.pgm {
-            border-color: var(--green);
-        }
-
-        .summary-card.err {
-            border-color: var(--red);
-        }
-
-        .summary-card .label {
-            font-size: 11px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .06em;
-        }
-
-        .summary-card .value {
-            font-size: 36px;
-            font-weight: 700;
-            margin-top: 8px;
-        }
-
-        /* ── GRID DE CARDS ── */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-            width: 100%;
-        }
-        /* ── BADGE DE CPU NO CARD ── */
-        .card-header-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .cpu-badge {
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(148, 163, 184, 0.1);
-            color: var(--muted);
-            font-family: monospace;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .cpu-badge.warning {
-            background: rgba(251, 191, 36, 0.15);
-            color: var(--yellow);
-        }
-
-        .cpu-badge.critical {
-            background: rgba(248, 113, 113, 0.2);
-            color: var(--red);
-            font-weight: 700;
-        }
-        .main-layout {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
-
-        /* Seção Errbit */
-        #errbit-section {
-            padding: 15px;
-            background: rgba(248, 113, 113, 0.02);
-            border-radius: 12px;
-            border: 1px solid rgba(248, 113, 113, 0.1);
-        }
-
-        #errbit-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
-        }
-
-        /* Estilo do Card Errbit Reduzido */
-        .error-card-small {
-            background: #1e293b;
-            border-left: 3px solid #ff4d4d;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            transition: transform 0.2s;
-        }
-
-        .error-card-small:hover {
-            transform: scale(1.01);
-        }
-
-        .error-card-small h4 {
-            color: #ff4d4d;
-            margin: 0 0 4px 0;
-            font-size: 0.9rem;
-        }
-
-        .error-card-small .err-msg {
-            color: #cbd5e1;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 6px;
-            border-radius: 4px;
-            margin: 8px 0;
-            font-family: monospace;
-            font-size: 0.75rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            /* Mantém o card baixo */
-        }
-
-        .card {
-            position: relative;
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 12px;
-            /* Padding dinâmico baseado na altura da tela */
-            border-left: 4px solid var(--accent);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 110px;
-            /* Garante que o card não fique "achatado" */
-            transition: transform .15s;
-        }
-
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, .4);
-        }
-
-        .card.PGE {
-            border-color: var(--green);
-        }
-
-        .card.PGM {
-            border-color: var(--green);
-        }
-
-        .card.error {
-            border-color: var(--red);
-            opacity: .7;
-            background: rgba(248, 113, 113, 0.05);
-        }
-
-        .card .error-text {
-            color: var(--red);
-            font-size: 11px;
-            margin-top: 8px;
-            font-weight: 500;
-            line-height: 1.3;
-            display: block;
-        }
-
-        .status-dot.error {
-            background: var(--red);
-            box-shadow: 0 0 8px var(--red);
-        }
-
-        .card .tag {
-            display: inline-block;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin-bottom: 12px;
-            background: rgba(56, 189, 248, .15);
-            color: var(--accent);
-        }
-
-        .card.PGE .tag {
-            background: rgba(244, 114, 182, .15);
-            color: var(--green);
-        }
-
-        .card.PGM .tag {
-            background: rgba(74, 222, 128, .15);
-            color: var(--green);
-        }
-        /* ── CERTIFICADOS SSL ── */
-        .cert-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        /* Barra SSL fixa no topo — sempre visível quando há alertas */
-        #ssl-sticky {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1500;
-            background: rgba(15, 23, 42, 0.97);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(251, 191, 36, 0.3);
-            padding: 7px 50px;
-            display: none;          /* js liga quando há alertas */
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        #ssl-sticky .ssl-label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            color: var(--yellow);
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        #ssl-sticky .cert-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            border: 1px solid;
-            white-space: nowrap;
-            transition: transform .15s;
-        }
-
-        #ssl-sticky .cert-pill:hover {
-            transform: translateY(-1px);
-        }
-
-        #ssl-sticky .cert-pill.critical {
-            background: rgba(248, 113, 113, 0.12);
-            border-color: var(--red);
-            color: var(--red);
-            animation: pulse-red 2s infinite;
-        }
-
-        #ssl-sticky .cert-pill.warning {
-            background: rgba(251, 191, 36, 0.10);
-            border-color: var(--yellow);
-            color: var(--yellow);
-        }
-
-        /* Empurra o body para baixo quando a barra SSL está ativa */
-        body.has-ssl-bar {
-            padding-top: 86px; /* altura da barra + espaço original */
-        }
-
-        .cert-card {
-            background: var(--surface);
-            border-radius: 10px;
-            border-left: 4px solid var(--green);
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 200px;
-            transition: transform .15s;
-        }
-
-        .cert-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,.4);
-        }
-
-        .cert-card.critical {
-            border-color: var(--red);
-            background: rgba(248, 113, 113, 0.06);
-            animation: pulse-red 2s infinite;
-        }
-
-        .cert-card .cert-info {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
-
-        .cert-card .cert-info .host {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .cert-card .cert-info .days {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .cert-card.critical .cert-info .days {
-            color: var(--red);
-            font-weight: 700;
-        }
-
-        .cert-card.warning {
-            border-color: var(--yellow);
-            background: rgba(251, 191, 36, 0.06);
-        }
-
-        .cert-card.warning .cert-info .days {
-            color: var(--yellow);
-            font-weight: 600;
-        }
-
-        /* ── SECTION HEADER ── */
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        /* Estilo para o alerta de certificado expirando */
-.cert-alert {
-    background-color: var(--red);
-    color: white;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: pulse-red 2s infinite;
-}
-
-@keyframes pulse-red {
-    0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(248, 113, 113, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
-}
-        .card .name {
-            font-size: clamp(12px, 1vw, 16px);
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 4px;
-            line-height: .8;
-        }
-
-        .card .count {
-            font-size: clamp(24px, 3vw, 42px);
-            font-weight: 700;
-            color: var(--red);
-            line-height: 1;
-        }
-
-        .card .count.zero {
-            color: var(--green);
-        }
-
-        .card .count-label {
-            font-size: 14px;
-            color: var(--muted);
-            margin-top: 4px;
-        }
-
-        .card .status-dot.no_config {
-            background: var(--border);
-        }
-
-        /* ── LOADING OVERLAY ── */
-        #loadingOverlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, .7);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity .3s;
-        }
-
-        #loadingOverlay.visible {
-            opacity: 1;
-            pointer-events: all;
-        }
-        /* ── CARD DE ROTINA ── */
-.rotina-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-}
-
-.rotina-card {
-    background: var(--surface);
-    border-radius: 10px;
-    border-left: 4px solid var(--green);
-    padding: 12px 14px;
-    cursor: pointer;
-    transition: transform .15s, box-shadow .15s;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.rotina-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(0,0,0,.35);
-}
-
-.rotina-card.status-ok          { border-color: var(--green); }
-.rotina-card.status-nao-rodou   { border-color: var(--red); background: rgba(248,113,113,.06); animation: pulse-red 2s infinite; }
-.rotina-card.status-sem-rotina  { border-color: var(--yellow); background: rgba(251,191,36,.06); }
-.rotina-card.status-verificar   { border-color: var(--yellow); }
-.rotina-card.status-error       { border-color: var(--red); opacity: .8; cursor: default; }
-
-.rotina-card .rc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-}
-
-.rotina-card .rc-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.rotina-card .rc-status {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    white-space: nowrap;
-}
-
-.rotina-card.status-ok          .rc-status { background: rgba(74,222,128,.15);  color: var(--green); }
-.rotina-card.status-nao-rodou   .rc-status { background: rgba(248,113,113,.2);  color: var(--red); }
-.rotina-card.status-sem-rotina  .rc-status { background: rgba(251,191,36,.15);  color: var(--yellow); }
-.rotina-card.status-verificar   .rc-status { background: rgba(251,191,36,.15);  color: var(--yellow); }
-.rotina-card.status-error       .rc-status { background: rgba(248,113,113,.2);  color: var(--red); }
-
-.rotina-card .rc-meta {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: monospace;
-}
-
-/* ── POPUP DE ALERTA DE ROTINA ── */
-#rotinaAlertOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(6px);
-    z-index: 2500;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn .25s ease-out;
-}
-
-#rotinaAlertOverlay.open { display: flex; }
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-.rotina-alert-box {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    border: 2px solid var(--red);
-    border-radius: 16px;
-    max-width: 720px;
-    width: 92%;
-    padding: 32px 36px;
-    box-shadow: 0 24px 80px rgba(248,113,113,.35), 0 0 0 1px rgba(248,113,113,.2);
-    animation: shakeIn .5s cubic-bezier(.36,.07,.19,.97);
-}
-
-@keyframes shakeIn {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
-    20%, 40%, 60%, 80% { transform: translateX(6px); }
-}
-
-.rotina-alert-box .ra-icon {
-    font-size: 52px;
-    text-align: center;
-    margin-bottom: 8px;
-    animation: pulse 1s infinite;
-}
-
-.rotina-alert-box h2 {
-    color: var(--red);
-    font-size: 22px;
-    text-align: center;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-}
-
-.rotina-alert-box .ra-sub {
-    color: var(--muted);
-    text-align: center;
-    font-size: 13px;
-    margin-bottom: 22px;
-}
-
-.rotina-alert-box .ra-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 320px;
-    overflow-y: auto;
-    margin-bottom: 22px;
-}
-
-.rotina-alert-box .ra-item {
-    background: rgba(248,113,113,.08);
-    border-left: 3px solid var(--red);
-    border-radius: 8px;
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-
-.rotina-alert-box .ra-item .ra-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.rotina-alert-box .ra-item .ra-detail {
-    font-size: 11px;
-    color: var(--red);
-    font-family: monospace;
-    text-align: right;
-}
-
-.rotina-alert-box .ra-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
-
-.rotina-alert-box .ra-actions button {
-    padding: 10px 24px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform .15s;
-    border: none;
-}
-
-.rotina-alert-box .ra-actions .ra-btn-dismiss {
-    background: rgba(148,163,184,.15);
-    color: var(--text);
-    border: 1px solid var(--border);
-}
-
-.rotina-alert-box .ra-actions .ra-btn-mute {
-    background: linear-gradient(135deg, #f87171, #dc2626);
-    color: #fff;
-}
-
-.rotina-alert-box .ra-actions button:hover {
-    transform: translateY(-2px);
-}
-
-        .spinner {
-            width: 45px;
-            height: 45px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin .8s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ── CHART ── */
-        .chart-wrap {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 30px;
-            margin-top: 20px;
-            height: 400px;
-            position: relative;
-        }
-
-        .chart-wrap h2 {
-            font-size: 14px;
-            color: var(--muted);
-            margin-bottom: 20px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-        }
-
-        /* ── MODAL ── */
-        .modal-bg {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, .75);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-bg.open {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--surface);
-            border-radius: 16px;
-            width: 95%;
-            max-width: 1600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 40px;
-            position: relative;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 20px;
-            right: 24px;
-            font-size: 28px;
-            color: var(--muted);
-            cursor: pointer;
-            background: none;
-            border: none;
-            line-height: 1;
-        }
-
-        .modal-close:hover {
-            color: var(--text);
-        }
-
-        .modal h2 {
-            font-size: 20px;
-            margin-bottom: 8px;
-        }
-
-        .modal .modal-sub {
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 24px;
-        }
-
-        /* ── TABELA ── */
-        .table-wrap {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        th {
-            background: #0f172a;
-            color: var(--accent);
-            padding: 12px 16px;
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
-
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
-            color: #cbd5e1;
-            vertical-align: top;
-        }
-
-        tr:hover td {
-            background: rgba(56, 189, 248, .04);
-        }
-
-        .err-msg {
-            color: var(--red);
-            font-size: 12px;
-            max-width: 350px;
-            word-break: break-word;
-        }
-
-        .card-tribunal {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 15px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: transform 0.2s;
-        }
-
-        .card-tribunal:hover {
-            transform: translateY(-3px);
-        }
-
-        .tribunal-info .name {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .status-200 {
-            background: rgba(40, 167, 69, 0.2);
-            color: #28a745;
-            border: 1px solid #28a745;
-        }
-
-        .status-error {
-            background: rgba(220, 53, 69, 0.2);
-            color: #dc3545;
-            border: 1px solid #dc3545;
-        }
-
-        /* Estilo Base do Botão de Ícone */
-        .btn-icon {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            color: var(--muted);
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            outline: none;
-            text-decoration: none;
-        }
-
-        .toolbar-actions {
-            display: flex;
-            align-items: center;
-            /* Centraliza verticalmente todos os botões */
-            gap: 12px;
-        }
-
-        /* Efeito Hover (Rato ou Foco do Comando da TV) */
-        .btn-icon:hover,
-        .btn-icon:focus {
-            background: rgba(56, 189, 248, 0.1);
-            border-color: var(--accent);
-            color: var(--accent);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Estado Ativo (Quando clicado) */
-        .btn-icon:active {
-            transform: translateY(0);
-        }
-
-        /* Estilização quando o Dashboard ESTÁ em Fullscreen */
-        :fullscreen .btn-icon {
-            background: var(--accent);
-            color: var(--bg);
-            border-color: var(--accent);
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
-        }
-
-        /* Tooltip simples para o botão (opcional) */
-        .btn-icon::after {
-            content: attr(title);
-            position: absolute;
-            bottom: -35px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--surface);
-            color: var(--text);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-            border: 1px solid var(--border);
-            z-index: 100;
-        }
-
-        .btn-icon:hover::after {
-            opacity: 1;
-        }
-
-        /* Estilo do Botão Principal (Atualizar) */
-        .btn-primary {
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-            color: #0f172a;
-            /* Texto escuro para contraste no fundo azul */
-            border: none;
-            padding: 10px 22px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Efeito ao passar o rato ou focar com o comando da TV */
-        .btn-primary:hover,
-        .btn-primary:focus {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
-            filter: brightness(1.1);
-            outline: none;
-        }
-
-        /* Efeito visual quando o botão é clicado */
-        .btn-primary:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
-        }
-
-        /* Estilo para quando o botão estiver desativado (durante o loading) */
-        .btn-primary:disabled {
-            background: var(--border);
-            color: var(--muted);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* Quando estiver em Fullscreen, o fundo da página tem de ser forçado */
-        :fullscreen body {
-            background-color: var(--bg);
-        }
-
-        .num {
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        #nextRefresh {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 6px;
-        }
-
-        #toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 14px 22px;
-            border-radius: 10px;
-            font-size: 13px;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: .3s;
-            z-index: 3000;
-            pointer-events: none;
-        }
-        /* ── STATUS DOS TRIBUNAIS ── */
-#tribunais-section {
-    padding: 15px;
-    background: rgba(56, 189, 248, 0.02);
-    border-radius: 12px;
-    border: 1px solid rgba(56, 189, 248, 0.1);
-}
-
-.tribunal-card {
-    background: var(--surface);
-    border-radius: 10px;
-    border-left: 4px solid var(--green);
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 200px;
-    transition: transform .15s, box-shadow .15s;
-}
-
-.tribunal-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.4);
-}
-
-.tribunal-card.offline {
-    border-color: var(--red);
-    background: rgba(248, 113, 113, 0.06);
-    animation: pulse-red 2s infinite;
-}
-
-.tribunal-card .tribunal-info {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.tribunal-card .tribunal-info .tribunal-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.tribunal-card .tribunal-info .tribunal-status {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-
-.tribunal-card.online  .tribunal-status { color: var(--green); }
-.tribunal-card.offline .tribunal-status { color: var(--red); }
-        #toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 20px;
-            }
-
-            .toolbar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .btn {
-                width: 100%;
-            }
-
-            .header {
-                flex-direction: column;
-            }
-
-            .summary-card {
-                min-width: 100%;
-            }
-        }
-
-        .errbit-container {
-            padding: 20px;
-            background-color: #1a1d21;
-            /* Fundo escuro para destacar */
-            border-radius: 12px;
-            margin-top: 20px;
-        }
-
-        .section-title {
-            color: #ff4d4d;
-            font-size: 1.25rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .error-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px;
-        }
-
-        .error-card {
-            background: #252930;
-            border-left: 4px solid #ff4d4d;
-            padding: 16px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s ease;
-        }
-
-        .error-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .error-card h3 {
-            color: #f8f9fa;
-            margin: 0 0 8px 0;
-            font-size: 1.1rem;
-        }
-
-        .error-date {
-            color: #8892b0;
-            font-size: 0.8rem;
-            display: block;
-            margin-bottom: 10px;
-        }
-
-        .error-message {
-            color: #ffb3b3;
-            background: rgba(255, 77, 77, 0.1);
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            font-family: 'Consolas', monospace;
-            line-height: 1.4;
-            word-break: break-word;
-        }
-
-        .error-link {
-            display: inline-block;
-            margin-top: 12px;
-            color: #4da6ff;
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-
-        .error-link:hover {
-            text-decoration: underline;
-        }
-
-        /* ── CARD CADASTROS EM BRANCO — compacto ── */
-        .blank-notices-section {
-            background: transparent;
-            border: none;
-            padding: 0;
-            margin-top: 0;
-        }
-
-        .blank-notices-section .section-header {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 6px;
-        }
-
-        .blank-notices-section .section-header h2 {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            color: var(--muted);
-        }
-
-        #blank-notices-cards {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .card-blank-warning {
-            background: var(--surface);
-            border-radius: 8px;
-            border-left: 3px solid var(--yellow);
-            padding: 8px 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            transition: transform .15s, box-shadow .15s;
-            min-width: 0;
-        }
-
-        .card-blank-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(0,0,0,.35);
-        }
-
-        .card-blank-warning .bw-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card-blank-warning .bw-left .bw-name {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--muted);
-        }
-
-        .card-blank-warning .bw-left .bw-count {
-            font-size: 18px;
-            font-weight: 700;
-            line-height: 1;
-            color: var(--yellow);
-        }
-
-        .card-blank-warning .bw-left .bw-count.zero {
-            color: var(--green);
-        }
-
-        .card-blank-warning .bw-left .bw-label {
-            font-size: 11px;
-            color: var(--muted);
-        }
-
-        .card-blank-warning .bw-icon {
-            font-size: 16px;
-            opacity: .85;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>SPA Vision</title>
+<style>
+:root{--bg:#0b1020;--panel:#121a2f;--panel2:#18223c;--line:#223054;--tx:#e6ecff;--mu:#8a97b8;--ac:#5eb6ff;--ok:#34d399;--wa:#fbbf24;--ba:#f87171;--r:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.wrap{max-width:1760px;margin:0 auto;padding:20px clamp(12px,3vw,40px) 60px}
+/* topo */
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin-bottom:18px}
+.brand h1{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.brand p{color:var(--mu);font-size:12px}
+#clock{font:600 18px ui-monospace,monospace;color:var(--ac);margin-left:auto}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{background:none;border:0;padding:6px 12px;border-radius:7px;color:var(--mu)}
+.seg button[aria-pressed=true]{background:var(--panel2);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line)}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 12px}
+.btn:hover{background:var(--panel2)}
+#q{flex:1;min-width:180px;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+#src{display:flex;gap:10px;margin-left:auto;color:var(--mu);font-size:11px;flex-wrap:wrap}
+#src i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--wa);margin-right:4px}
+#src i.ok{background:var(--ok)}#src i.er{background:var(--ba)}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;text-align:left;transition:.15s}
+.kpi:hover{border-color:var(--ac)}
+.kpi[aria-pressed=true]{border-color:var(--ac);background:var(--panel2)}
+.kpi b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--mu);font-size:12px}
+.kpi.bad b{color:var(--ba)}.kpi.warn b{color:var(--wa)}.kpi.good b{color:var(--ok)}
+/* gauge */
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 20px}
+.gauge{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:center}
+.gauge svg{width:100%;max-width:200px;height:auto}
+.gauge .val{font:700 24px ui-monospace,monospace;fill:var(--tx)}
+.gauge .lbl{font-size:11px;fill:var(--mu)}
+.gauge h4{font-size:12px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.spark{width:100%;height:60px;display:block;margin-top:8px}
+/* tribunais */
+#trib{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:28px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12px}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.pill.off::before{background:var(--ba)}
+/* grid de clientes */
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;cursor:pointer;transition:transform .15s,border-color .15s;content-visibility:auto;contain-intrinsic-size:auto 190px}
+.card:hover{transform:translateY(-2px);border-color:var(--ac)}
+.card::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--ok)}
+.card.s1::before{background:var(--ac)}.card.s2::before{background:var(--wa)}.card.s3::before{background:var(--ba)}
+.card.s3{box-shadow:0 0 0 1px rgba(248,113,113,.25),0 6px 24px -10px rgba(248,113,113,.4)}
+.ch{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ch h3{font-size:15px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:var(--panel2);color:var(--mu)}
+.tag.PGE{color:#f9a8d4}.tag.PGM{color:#86efac}
+.ms{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.m{background:var(--panel2);border-radius:10px;padding:8px 10px;min-height:54px}
+.m b{display:block;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.m span{font-size:11px;color:var(--mu)}
+.m.ok b{color:var(--ok)}.m.wa b{color:var(--wa)}.m.ba b{color:var(--ba)}.m.mu b{color:var(--mu)}
+.m.big b{font-size:22px}
+.cf{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;min-height:20px}
+.chip{font-size:11px;border-radius:6px;padding:2px 7px;background:rgba(251,191,36,.14);color:var(--wa)}
+.chip.ba{background:rgba(248,113,113,.16);color:var(--ba)}
+.sh{display:inline-block;width:42px;height:16px;border-radius:5px;background:linear-gradient(90deg,var(--line),var(--panel),var(--line));background-size:200% 100%;animation:sh 1.2s linear infinite;vertical-align:middle}
+@keyframes sh{to{background-position:-200% 0}}
+.empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:50px}
+details{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
+details summary{cursor:pointer;color:var(--mu)}
+#fail{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 12px;padding:10px 14px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);border-radius:var(--r);color:var(--tx);font-size:13px}
+#fail[hidden]{display:none}#fail span{flex:1;min-width:220px}#fail b{color:var(--ba)}
+.alertbox{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;width:100%;padding:10px 14px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);border-radius:var(--r);color:var(--ba);font-size:13px}
+.tr{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--ok);border-radius:var(--r);padding:12px 14px;margin-top:10px;display:grid;gap:6px}
+.tr.off{border-left-color:var(--ba)}
+.tr .th{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.tr .th b{font-size:15px;flex:1;min-width:140px}
+.tr .tm{color:var(--mu);font-size:12px;overflow-wrap:anywhere}.tr .te{color:var(--ba);font-size:12.5px;overflow-wrap:anywhere}
+.tr a{color:var(--ac);font-size:12px;text-decoration:none}.tr a:hover{text-decoration:underline}
+details li{list-style:none;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+details ul{margin-top:8px}
+/* gaveta */
+#ov{position:fixed;inset:0;background:rgba(3,6,15,.6);opacity:0;pointer-events:none;transition:.2s;z-index:20}
+#dr{position:fixed;top:0;right:0;bottom:0;width:min(920px,100%);background:var(--bg);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .25s;z-index:21;display:flex;flex-direction:column}
+body.open #ov{opacity:1;pointer-events:auto}body.open #dr{transform:none}
+.dh{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dh h2{font-size:18px;flex:1}
+#sub{color:var(--mu);font-size:12px;padding:8px 20px}
+#body{overflow:auto;padding:0 20px 24px;flex:1}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{position:sticky;top:0;background:var(--panel);text-align:left;color:var(--mu);font-weight:600;text-transform:capitalize;padding:8px 10px;white-space:nowrap}
+td{padding:7px 10px;border-top:1px solid var(--line);vertical-align:top;max-width:380px;overflow-wrap:anywhere}
+td.n{font-family:ui-monospace,monospace}td.er{color:var(--ba)}
+.bd{padding:1px 8px;border-radius:5px;font-size:11px;font-weight:700}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:40}
+#toast div{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--ac);border-radius:10px;padding:10px 14px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#toast .ba{border-left-color:var(--ba)}
+@media(max-width:600px){#clock{display:none}.kpi b{font-size:22px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
-
 <body>
-
-    <!-- Inputs ocultos: estado interno de datas (usado por saveDates/loadDates/fetchData) -->
-    <input type="hidden" id="dataInicio">
-    <input type="hidden" id="dataFim">
-
-    <!-- ── BARRA SSL STICKY — sempre visível quando há alertas ── -->
-    <div id="ssl-sticky">
-        <span class="ssl-label">🔒 SSL Expirando</span>
-        <div id="ssl-pills" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SPA Vision</h1></div>
+    <div id="clock" aria-hidden="true"></div>
+    <div class="bar">
+      <input id="q" type="search" placeholder="Buscar cliente  ( / )" aria-label="Buscar cliente" autocomplete="off">
+      <div class="seg" id="tipo" role="group" aria-label="Tipo">
+        <button data-v="ALL" aria-pressed="true">Todos</button><button data-v="PGE" aria-pressed="false">PGE</button><button data-v="PGM" aria-pressed="false">PGM</button>
+      </div>
+      <div class="seg" id="per" role="group" aria-label="Período">
+        <button data-v="" aria-pressed="true">Padrão</button><button data-v="hoje" aria-pressed="false">Hoje</button><button data-v="semana" aria-pressed="false">7 dias</button><button data-v="mes" aria-pressed="false">Mês</button>
+      </div>
+      <button class="btn" id="rf" title="Atualizar tudo">↻ Atualizar</button>
+      <button class="btn" id="mute" title="Som de alerta" aria-pressed="false">🔔</button>
+      <button class="btn" id="fs" title="Tela cheia">⛶</button>
+      <a class="btn" href="/checklist" target="_blank" rel="noopener" style="text-decoration:none">Checklist</a>
+      <div id="src" aria-label="Estado das fontes"></div>
     </div>
-
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
-    <div id="toast"></div>
-
-    <div class="header">
-        <div class="header-left">
-            <div id="digitalClock"
-                style="font-size: 20px; font-weight: 700; color: var(--accent); margin: 8px 0; font-family: monospace;">
-                00:00:00</div>
-            <h3>Monitoramento de Expedientes</h3>
-            <div class="subtitle">Processos pendentes de notificação · SPA</div>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
-                <div id="cacheBadge"><span class="dot"></span><span id="cacheLabel">Aguardando dados...</span></div>
-                <div id="lastFetch" style="font-size: 11px; color: var(--muted);">Última busca: --:--:--</div>
-                <div id="nextRefresh"></div>
-            </div>
-        </div>
-
-        <div class="toolbar">
-            <div class="toolbar-actions">
-                <button onclick="toggleFullScreen()" class="btn-icon" id="fullscreenBtn" title="Alternar Ecrã Inteiro">
-                    <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path
-                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
-                        </path>
-                    </svg>
-                </button>
-                <a href="/checklist" target="_blank" rel="noopener" class="btn-icon" title="Checklist">
-                    Checklist
-                </a>
-
-                <button onclick="fetchData()" class="btn-primary" id="btnRefresh">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-                        <path d="M21 3v5h-5"></path>
-                    </svg>
-                    Atualizar
-                </button>
-            </div>
-            <div class="date-group">
-
-                <div style="display: flex; gap: 4px;">
-                    <button class="btn" onclick="setPeriod('hoje')">Hoje</button>
-                    <button class="btn" onclick="setPeriod('semana')">Semana</button>
-                    <button class="btn" onclick="setPeriod('mes')">Mês</button>
-                </div>
-            </div>
-
-
-            <button class="btn active" data-filter="ALL" onclick="setFilter('ALL', this)">Todos</button>
-            <button class="btn" data-filter="PGE" onclick="setFilter('PGE', this)">PGE</button>
-            <button class="btn" data-filter="PGM" onclick="setFilter('PGM', this)">PGM</button>
-        </div>
-    </div>
-    <div class="main-layout">
-
-
-
-        <div class="grid" id="grid">
-              
-        </div>
-
-
-
-        <div class="modal-bg" id="modalBg" onclick="closeModal(event)">
-            <div class="modal" id="modal">
-                <button class="modal-close" onclick="closeModalBtn()">×</button>
-                <h2 id="modalTitle">Processos Pendentes</h2>
-                <div class="modal-sub" id="modalSub"></div>
-                <div id="modalBody">
-                    <div style="color:var(--muted);text-align:center;padding:40px">Carregando...</div>
-                </div>
-            </div>
-        </div>
-       
-       <section id="blank-notices-all-section" class="blank-notices-section" style="display:none;">
-            <div class="section-header">
-                <span style="font-size:18px;">🚨</span>
-                <h2>Cadastros em Branco</h2>
-                <span style="font-size:11px; color:var(--muted); font-weight:200; margin-left:auto;"
-                    id="blankNoticesAllStatus"></span>
-            </div>
-            <div id="blank-notices-all-cards" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
-        </section>
-       <!-- Seção de certificados SSL — exibida apenas quando há alertas -->
-        <section id="ssl-section" style="display:none;">
-            <div class="section-header" style="margin-bottom:10px;">
-                <span style="font-size:18px;">🔒</span>
-                <h2 style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--yellow);">
-                    Certificados SSL Expirando (≤10 dias)
-                </h2>
-                <span id="sslLastCheck" style="font-size:11px; color:var(--muted); margin-left:auto;"></span>
-            </div>
-        </section>
-        <!-- ── STATUS DOS TRIBUNAIS ── -->
-         <!--
-<section id="tribunais-section">
-    <div class="section-header" style="margin-bottom:10px;">
-        <span style="font-size:18px;">🏛️</span>
-        <h2 style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">
-            Status dos Tribunais
-        </h2>
-        <span id="tribunaisLastCheck" style="font-size:11px; color:var(--muted); margin-left:auto;"></span>
-    </div>
-    <div id="tribunaisStatus" class="cert-container"></div>
-</section>
-         -->       <!-- ── ROTINA DE EXPEDIENTES ── -->
-        <section id="rotina-section">
-            <div class="section-header" style="margin-bottom:10px;">
-                <span style="font-size:18px;">⚙️</span>
-                <h2 style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">
-                    Rotina de Expedientes
-                </h2>
-                <span id="rotinaLastCheck" style="font-size:11px; color:var(--muted); margin-left:auto;"></span>
-            </div>
-            <div id="rotina-grid" class="rotina-grid">
-                <div class="rotina-card status-ok" style="cursor:default; opacity:.5;">
-                    <div class="rc-header">
-                        <div class="rc-name">Carregando...</div>
-                        <div class="rc-status">⏳</div>
-                    </div>
-                </div>
-            </div>
-             <!-- ── POPUP DE ALERTA DE ROTINA (com som) ── -->
-    <div id="rotinaAlertOverlay">
-        <div class="rotina-alert-box">
-            <div class="ra-icon">🚨</div>
-            <h2>Rotina com Falha</h2>
-            <div class="ra-sub" id="rotinaAlertSub">Detectados clientes com problema na rotina de expedientes</div>
-            <div class="ra-list" id="rotinaAlertList"></div>
-            <div class="ra-actions">
-                <button class="ra-btn-mute" onclick="silenciarRotinaHoje()">🔇 Silenciar por 1h</button>
-                <button class="ra-btn-dismiss" onclick="fecharRotinaAlert()">Fechar</button>
-            </div>
-        </div>
-    </div>
-        </section>
-        <!-- <div id="tribunaisStatus" class="cert-container"></div>-->
-        <section id="errbit-section" style="display: none;">
-            <h2
-                style="color: #ff4d4d; font-size: 14px; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px;">
-                ⚠️ Erros Críticos (Hoje)
-            </h2>
-            <div id="errbit-list"></div>
-        </section>
-
-       
-
-    </div>
-
-
-
-
-    <!-- Seção de Status de Tribunais 
-<div id="tribunaisStatus" style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
-    Os status aparecerão aqui automaticamente 
-</div>-->
-    <script>
-
-
-        function updateDigitalClock() {
-            const el = document.getElementById('digitalClock');
-            if (!el) return;
-            const now = new Date();
-            el.textContent = now.toLocaleTimeString('pt-BR');
-        }
-        // Inicia o relógio e atualiza a cada segundo
-        setInterval(updateDigitalClock, 1000);
-        updateDigitalClock();
-
-
-        const API_BASE = '';
-        //const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-        //? 'http://127.0.0.1:8000'
-        // : '';
-        const AUTO_REFRESH_MS = 600000;
-
-        let rawData = [];
-        let activeFilter = 'ALL';
-        let chartInst = null;
-        let refreshTimer = null;
-        let nextRefreshAt = null;
-
-        function saveDates() {
-            const sEl = document.getElementById('dataInicio');
-            const eEl = document.getElementById('dataFim');
-
-            if (sEl && eEl) {
-                try {
-                    sessionStorage.setItem('spa_inicio', sEl.value);
-                    sessionStorage.setItem('spa_fim', eEl.value);
-                } catch (e) { }
-            }
-        }
-
-        function loadDates() {
-            try {
-                document.getElementById('dataInicio').value = sessionStorage.getItem('spa_inicio') || '';
-                document.getElementById('dataFim').value = sessionStorage.getItem('spa_fim') || '';
-            } catch (_) { }
-        }
-
-        function clearDates() {
-            document.getElementById('dataInicio').value = '';
-            document.getElementById('dataFim').value = '';
-            try { sessionStorage.removeItem('spa_inicio'); sessionStorage.removeItem('spa_fim'); } catch (_) { }
-            fetchData();
-        }
-    function renderizarCertificados(listaCertificados) {
-        const stickyBar  = document.getElementById('ssl-sticky');
-        const pillsWrap  = document.getElementById('ssl-pills');
-        // Seção inline abaixo do grid — mantemos mas ocultamos (sticky já cobre)
-        const sslSection = document.getElementById('ssl-section');
-
-        if (!stickyBar || !pillsWrap) return;
-
-        if (!listaCertificados || listaCertificados.length === 0) {
-            stickyBar.style.display = 'none';
-            document.body.classList.remove('has-ssl-bar');
-            if (sslSection) sslSection.style.display = 'none';
-            return;
-        }
-    function getClientName(host) {
-    const parts = host.split('.');
-
-    let name;
-
-    // Padrão: pgm.vitoria.spa.coreplan.com.br
-    if (parts[0] === 'pgm') {
-        name = parts[1];
-    }
-
-    // Padrão: spa.pge.ma.spa.coreplan.com.br
-    else if (parts[0] === 'spa' && parts[1] === 'pge') {
-        name = parts[2];
-    }
-
-    // Padrão antigo: amargosa.spa.coreplan.com.br
-    else {
-        name = parts[0];
-    }
-
-    return name
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase());
-    }
-        // Monta pills na barra sticky
-        pillsWrap.innerHTML = '';
-        listaCertificados.forEach(cert => {
-            const isCritical = cert.dias_restantes <= 7;
-
-            // Extrai o nome do cliente do subdomínio (ex: "amargosa.spa.coreplan.com.br" → "Amargosa")
-           const clientName = getClientName(cert.host);
-
-            const pill = document.createElement('span');
-            pill.className = `cert-pill ${isCritical ? 'critical' : 'warning'}`;
-            pill.title = cert.host;
-            pill.innerHTML = `
-                ${isCritical ? '🔴' : '🟡'}
-                <strong>${clientName}</strong>
-                <span style="opacity:.8; font-size:11px;">· ${cert.dias_restantes}d · ${cert.validade || ''}</span>
-            `;
-            pillsWrap.appendChild(pill);
-        });
-
-        // Exibe a barra e empurra o conteúdo para baixo
-        stickyBar.style.display = 'flex';
-        document.body.classList.add('has-ssl-bar');
-
-        // Oculta a seção inline (redundante com a barra)
-        if (sslSection) sslSection.style.display = 'none';
-
-        // Toasts para críticos
-        const criticos = listaCertificados.filter(c => c.dias_restantes <= 7);
-        criticos.forEach((cert, i) => {
-            setTimeout(() => {
-                exibirNotificacaoCritica(cert.host, cert.dias_restantes, cert.validade);
-            }, i * 5000);
-        });
-    }
-
-    function exibirNotificacaoCritica(host, dias, validade) {
-        const nivel = dias <= 7 ? '🔴 CRÍTICO' : '🟡 ATENÇÃO';
-        const dataStr = validade ? ` (${validade})` : '';
-        toastPersistente(`${nivel}: Certificado de ${host} expira em ${dias} dias${dataStr}!`, dias <= 7 ? 'error' : 'warn');
-    }
-        async function fetchData(manualStart = null, manualEnd = null) {
-            saveDates();
-            showLoading(true);
-            const btn = document.getElementById('btnRefresh');
-            if (btn) btn.disabled = true;
-
-            const sEl = document.getElementById('dataInicio');
-            const eEl = document.getElementById('dataFim');
-
-            // Usa as datas passadas pelos botões OU dos inputs (se existirem)
-            const inicio = manualStart || (sEl ? sEl.value : (sessionStorage.getItem('spa_inicio') || ''));
-            const fim = manualEnd || (eEl ? eEl.value : (sessionStorage.getItem('spa_fim') || ''));
-
-            try {
-                let url = `${API_BASE}/processos/resumo?t=${Date.now()}`;
-                if (inicio) url += `&dataInicio=${inicio}`;
-                if (fim) url += `&dataFim=${fim}`;
-
-                const res = await fetch(url);
-                if (res.status === 429) {
-                    toast("Muitas requisições. Aguarde 1 minuto.", "error");
-                    return;
-                }
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-                const data = await res.json();
-                if (!Array.isArray(data)) throw new Error("Resposta inválida do servidor");
-
-                rawData = data;
-                renderAll();
-                updateCacheBadge(data.some(d => d.cached));
-                const now = new Date();
-                const lastFetchEl = document.getElementById('lastFetch');
-                if (lastFetchEl) {
-                    lastFetchEl.textContent = `Última busca: ${now.toLocaleTimeString('pt-BR')}`;
-                }
-                // Dispara em paralelo sem bloquear o loading overlay
-                checkTribunaisStatus();
-                checkErrbitErrors();
-                fetchBlankNotices();   // TTL 20min no backend — responde rápido do cache
-                fetchBlankNoticesTodos(); // Cadastros em branco de todos os clientes (exceto MB5)
-                fetchSSLCerts();       // TTL 1h no backend — nunca bloqueia
-                fetchCpuUsage();
-            } catch (err) {
-                toast("Falha de autenticação", "error");
-                console.error(err);
-            } finally {
-                if (btn) btn.disabled = false;
-                showLoading(false);
-                scheduleNextRefresh();
-            }
-        }
-
-        async function checkErrbitErrors() {
-            const section = document.getElementById('errbit-section');
-            const list = document.getElementById('errbit-list');
-
-            if (!section || !list) return;
-            try {
-                const res = await fetch(`${API_BASE}/api/errbit/expedientes`);
-                const contentType = res.headers.get("content-type");
-                if (!res.ok || !contentType || !contentType.includes("application/json")) {
-                    console.warn("API Errbit indisponível ou retornando HTML (404/500).");
-                    section.style.display = 'none';
-                    return;
-                }
-
-                const data = await res.json();
-
-                const listaDeErros = data.errors || [];
-
-                if (listaDeErros.length > 0) {
-                    section.style.display = 'block';
-                    list.innerHTML = '';
-                    listaDeErros.forEach(erro => {
-                        const card = `
-                    <div class="error-card-small">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h4>${erro.app_name}</h4>
-                            <small style="color: #64748b; font-size: 10px;">${erro.occ_at}</small>
-                        </div>
-                        <div style="font-weight: 600; color: #f1f5f9; margin-top: 4px;">${erro.title}</div>
-                        <div class="err-msg">${erro.message}</div>
-                        <a href="${erro.link}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11px; font-weight: 500;">VER DETALHES →</a>
-                    </div>
-                `;
-                        list.innerHTML += card;
-                    });
-                } else {
-                    section.style.display = 'none';
-                }
-            } catch (error) {
-                console.error("Erro Errbit:", error);
-                section.style.display = 'none';
-            }
-        }
-    async function fetchCpuUsage() {
-        try {
-        const res = await fetch(`${API_BASE}/api/zabbix/cpu`);
-        if (!res.ok) return;
-        const result = await res.json();
-        
-        if (result && Array.isArray(result.data)) {
-            const cpuMap = {};
-            result.data.forEach(item => {
-                cpuMap[item.name] = item.cpu_usage;
-            });
-
-            // Atualiza dynamicamente os badges de CPU já existentes no DOM
-            document.querySelectorAll('.card').forEach(card => {
-                const nameEl = card.querySelector('.name');
-                if (nameEl) {
-                    const instName = nameEl.textContent.trim();
-                    const cpuVal = cpuMap[instName];
-                    const cpuBadge = card.querySelector('.cpu-badge');
-                    if (cpuBadge && cpuVal !== undefined && cpuVal !== null) {
-                        const cpuNum = parseFloat(cpuVal);
-                        let cpuClass = '';
-                        if (cpuNum >= 85) cpuClass = 'critical';
-                        else if (cpuNum >= 70) cpuClass = 'warning';
-                        
-                        cpuBadge.className = `cpu-badge ${cpuClass}`;
-                        cpuBadge.innerHTML = ` ${cpuNum.toFixed(1)}%`;
-                    }
-                }
-            });
-        }
-    } catch (e) {
-        console.warn('[CPU Fetch]', e);
-    }
-}
-
-  async function checkTribunaisStatus() {
-    const container = document.getElementById("tribunaisStatus");
-    const lastCheck = document.getElementById("tribunaisLastCheck");
-    if (!container) return;
-
-    try {
-        const res = await fetch(`${API_BASE}/api/status/tribunais?t=${Date.now()}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        if (!Array.isArray(data)) {
-            console.error("Backend não retornou uma lista:", data);
-            return;
-        }
-
-        container.innerHTML = '';
-
-        if (data.length === 0) {
-            container.innerHTML = `
-                <div class="tribunal-card" style="cursor:default; opacity:.6;">
-                    <div class="tribunal-info">
-                        <div class="tribunal-name">Nenhum tribunal configurado</div>
-                    </div>
-                </div>`;
-            return;
-        }
-
-        data.forEach(trib => {
-            const isOk = trib.status === 'OK';
-            const card = document.createElement('div');
-            card.className = `tribunal-card ${isOk ? 'online' : 'offline'}`;
-            card.title = `HTTP ${trib.code || '—'}`;
-            card.innerHTML = `
-                <div class="tribunal-info">
-                    <div class="tribunal-name">${trib.nome}</div>
-                    <div class="tribunal-status">
-                        ${isOk ? '● ONLINE' : '● FORA DO AR'}
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-
-        if (lastCheck) {
-            lastCheck.textContent = `Verificado às ${new Date().toLocaleTimeString('pt-BR')}`;
-        }
-
-    } catch (err) {
-        console.error("Erro ao checar tribunais:", err);
-        container.innerHTML = `
-            <div class="tribunal-card offline" style="cursor:default;">
-                <div class="tribunal-info">
-                    <div class="tribunal-name">Falha ao consultar</div>
-                    <div class="tribunal-status">● ERRO</div>
-                </div>
-            </div>`;
-        if (lastCheck) lastCheck.textContent = '🔴 Erro de conexão';
-    }
-}
-
-        function renderAll() {
-            const filtered = rawData.filter(d => {
-                if (activeFilter === 'ALL') return true;
-                return d.instancia.startsWith(activeFilter);
-            });
-
-            // renderSummary(filtered);
-            renderGrid(filtered);
-
-        }
-
-        function setPeriod(periodo, element) {
-            // Gestão visual dos botões
-            document.querySelectorAll('.date-group .btn').forEach(btn => btn.classList.remove('active'));
-            if (element) element.classList.add('active');
-
-            const hoje = new Date();
-            let dataInicio = new Date();
-
-            if (periodo === 'semana') dataInicio.setDate(hoje.getDate() - 7);
-            else if (periodo === 'mes') dataInicio.setMonth(hoje.getMonth() - 1);
-
-            const format = (d) => d.toISOString().split('T')[0];
-            const sStr = format(dataInicio);
-            const eStr = format(hoje);
-
-            // Guarda no sessionStorage para uso do modal/refresh
-            sessionStorage.setItem('spa_inicio', sStr);
-            sessionStorage.setItem('spa_fim', eStr);
-
-            const sEl = document.getElementById('dataInicio');
-            const eEl = document.getElementById('dataFim');
-
-            if (sEl && eEl) {
-                sEl.value = sStr;
-                eEl.value = eStr;
-                fetchData();
-            } else {
-                fetchData(sStr, eStr); // Passa os valores diretamente
-            }
-        }
-        function toggleFullScreen() {
-            const icon = document.getElementById('fullscreenIcon');
-
-            if (!document.fullscreenElement) {
-                // ENTRAR NO MODO TELA CHEIA
-                document.documentElement.requestFullscreen().then(() => {
-                    // Muda o ícone para "Sair do Ecrã Inteiro"
-                    icon.innerHTML = '<path d="M4 14h3v3m0-10V4H4m16 3h-3V4m0 13v3h3"></path>';
-                }).catch(err => {
-                    console.log(`Erro: ${err.message}`);
-                });
-            } else {
-                // SAIR DO MODO TELA CHEIA
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                    // Volta o ícone para "Entrar em Ecrã Inteiro"
-                    icon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
-                }
-            }
-        }
-
-        // Ouvinte de evento para o caso de usares o botão "Voltar" do comando da TV
-        document.addEventListener('fullscreenchange', () => {
-            const icon = document.getElementById('fullscreenIcon');
-            if (!document.fullscreenElement) {
-                // Garante que o ícone volta ao normal se saíres pelo comando
-                icon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
-            }
-        });
-        function renderSummary(data) {
-            const total = data.reduce((s, d) => s + (d.total_pendentes || 0), 0);
-            const pge = data.filter(d => d.instancia.startsWith('PGE')).reduce((s, d) => s + (d.total_pendentes || 0), 0);
-            const pgm = data.filter(d => d.instancia.startsWith('PGM')).reduce((s, d) => s + (d.total_pendentes || 0), 0);
-
-            document.getElementById('sumTotal').textContent = total.toLocaleString('pt-BR');
-            document.getElementById('sumPGE').textContent = pge.toLocaleString('pt-BR');
-            document.getElementById('sumPGM').textContent = pgm.toLocaleString('pt-BR');
-        }
-
-        function renderGrid(data) {
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-
-            if (!data.length) {
-                grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;text-align:center;padding:40px">Nenhuma instância encontrada.</p>';
-                return;
-            }
-
-            const sorted = [...data].sort((a, b) => (b.total_pendentes || 0) - (a.total_pendentes || 0));
-
-            sorted.forEach(item => {
-                const type = item.instancia.startsWith('PGE') ? 'PGE' : 'PGM';
-                const isErr = item.status !== 'ok';
-                const count = item.total_pendentes || 0;
-
-                // Processamento dos dados de CPU (ex: item.cpu_usage ou item.cpu)
-                const cpuVal = item.cpu_usage !== undefined ? item.cpu_usage : (item.cpu !== undefined ? item.cpu : null);
-                let cpuMarkup = '';
-
-                if (cpuVal !== null && cpuVal !== undefined) {
-                    const cpuNum = parseFloat(cpuVal);
-                    let cpuClass = '';
-                    if (cpuNum >= 85) {
-                        cpuClass = 'critical';
-                    } else if (cpuNum >= 70) {
-                        cpuClass = 'warning';
-                    }
-                   // cpuMarkup = `<span class="cpu-badge ${cpuClass}" title="Uso de CPU">CPU ${cpuNum.toFixed(1)}%</span>`;
-                } else {
-                  //  cpuMarkup = `<span class="cpu-badge" title="CPU "></span>`;
-                }
-
-                // Pega a mensagem de erro caso exista, senão usa um texto padrão
-                const errorMessage = item.error_message || "Erro na conexão com Metabase";
-
-                const card = document.createElement('div');
-                card.className = `card ${type} ${isErr ? 'error' : ''}`;
-                card.onclick = () => openDetails(item.prefixo, item.instancia);
-
-                card.innerHTML = `
-                    <div class="${item.status === 'ok' ? '' : 'error'}"></div>
-                    <div class="card-header-info">
-                        <div class="name">${_escapeHtml(item.instancia)}</div>
-                        ${cpuMarkup}
-                    </div>
-                    ${isErr ?
-                        `<div class="error-text">⚠️ ${_escapeHtml(errorMessage)}</div>` :
-                        `<div class="count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
-                         <div class="count-label">pendente${count !== 1 ? 's' : ''} não cadastrado${count !== 1 ? 's' : ''}</div>`
-                    }
-                `;
-
-                grid.appendChild(card);
-            });
-        }
-
-        function renderChart(data) {
-            const ctx = document.getElementById('chart').getContext('2d');
-            if (chartInst) chartInst.destroy();
-
-            const sorted = [...data].sort((a, b) => (b.total_pendentes || 0) - (a.total_pendentes || 0));
-
-            chartInst = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: sorted.map(d => d.instancia),
-                    datasets: [{
-                        label: 'Pendentes',
-                        data: sorted.map(d => d.total_pendentes || 0),
-                        backgroundColor: sorted.map(d =>
-                            d.instancia.startsWith('PGE') ? 'rgba(244,114,182,.7)' : 'rgba(74,222,128,.7)'
-                        ),
-                        borderRadius: 5,
-                        borderSkipped: false,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ` ${ctx.parsed.y.toLocaleString('pt-BR')} pendentes`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } }
-                    }
-                }
-            });
-        }
-
-        async function openDetails(prefix, name) {
-            var bg = document.getElementById('modalBg');
-            var body = document.getElementById('modalBody');
-            var titleEl = document.getElementById('modalTitle');
-            var subEl = document.getElementById('modalSub');
-
-            if (!bg || !body) return;
-
-            // 1. Reset e Loading
-            titleEl.textContent = name;
-            if (subEl) subEl.textContent = "A carregar...";
-            body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">A consultar Metabase...</div>';
-            bg.classList.add('open');
-
-            // 2. Captura segura de datas (Compatível com TV e sem erros de 'null')
-            var sEl = document.getElementById('dataInicio');
-            var eEl = document.getElementById('dataFim');
-            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
-            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
-
-            // 3. Montagem da URL
-            var url = API_BASE + '/processos/detalhes/' + prefix + '?t=' + new Date().getTime();
-            if (inicio) url += '&dataInicio=' + inicio;
-            if (fim) url += '&dataFim=' + fim;
-
-            try {
-                var res = await fetch(url);
-                if (!res.ok) throw new Error("Erro na resposta do servidor: " + res.status);
-
-                var result = await res.json();
-
-                if (subEl) {
-                    subEl.textContent = result.total.toLocaleString('pt-BR') + " processo(s) · " + (result.cached ? '⚡ cache' : '🔄 ao vivo');
-                }
-
-                if (!result.processos || result.processos.length === 0) {
-                    body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Nenhum processo encontrado.</p>';
-                    return;
-                }
-
-                // 4. Lógica de Colunas (Removendo 'content' e ordenando)
-                var allCols = Object.keys(result.processos[0]);
-                var cols = allCols.filter(function (c) { return c !== 'content'; });
-                var priority = ['judicial_process_number', 'failure_message', 'available_at', 'procedure_id', 'created_at'];
-
-                var ordered = priority.filter(function (c) { return cols.indexOf(c) !== -1; })
-                    .concat(cols.filter(function (c) { return priority.indexOf(c) === -1; }));
-
-                // 5. Construção da Tabela Manual (Garante que funcione na TV)
-                var html = '<div class="table-wrap"><table><thead><tr>';
-                for (var i = 0; i < ordered.length; i++) {
-                    html += '<th>' + ordered[i].replace(/_/g, ' ') + '</th>';
-                }
-                html += '</tr></thead><tbody>';
-
-                for (var j = 0; j < result.processos.length; j++) {
-                    var p = result.processos[j];
-                    html += '<tr>';
-                    for (var k = 0; k < ordered.length; k++) {
-                        var colName = ordered[k];
-                        var val = (p[colName] !== null && p[colName] !== undefined) ? p[colName] : '—';
-                        var cls = '';
-                        if (colName === 'failure_message') cls = ' class="err-msg"';
-                        if (colName === 'judicial_process_number') cls = ' class="num"';
-                        html += '<td' + cls + '>' + val + '</td>';
-                    }
-                    html += '</tr>';
-                }
-                html += '</tbody></table></div>';
-
-                body.innerHTML = html;
-
-            } catch (err) {
-                console.error(err);
-                body.innerHTML = '<p style="color:var(--red);text-align:center;padding:40px">Erro: ' + err.message + '</p>';
-            }
-        }
-
-        function closeModal(e) {
-            if (e.target === document.getElementById('modalBg')) {
-                document.getElementById('modalBg').classList.remove('open');
-            }
-        }
-
-        function closeModalBtn() {
-            document.getElementById('modalBg').classList.remove('open');
-        }
-
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') document.getElementById('modalBg').classList.remove('open');
-        });
-
-        function setFilter(type, btn) {
-            activeFilter = type;
-            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderAll();
-        }
-
-        function scheduleNextRefresh() {
-            if (refreshTimer) clearTimeout(refreshTimer);
-            nextRefreshAt = Date.now() + AUTO_REFRESH_MS;
-            refreshTimer = setTimeout(fetchData, AUTO_REFRESH_MS);
-            updateNextRefreshLabel();
-        }
-
-        function updateNextRefreshLabel() {
-            const el = document.getElementById('nextRefresh');
-            if (!nextRefreshAt) { el.textContent = ''; return; }
-            const secs = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
-            const min = Math.floor(secs / 60);
-            const sec = secs % 60;
-            el.textContent = `Próxima atualização em ${min}m${sec.toString().padStart(2, '0')}s`;
-            setTimeout(updateNextRefreshLabel, 1000);
-        }
-
-        function updateCacheBadge(cached) {
-            const badge = document.getElementById('cacheBadge');
-            const label = document.getElementById('cacheLabel');
-            const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-            if (cached) {
-                badge.classList.add('stale');
-                label.textContent = `Dados em cache · atualizado antes das ${now}`;
-            } else {
-                badge.classList.remove('stale');
-                // label.textContent = `Dados ao vivo · ${now}`;
-            }
-        }
-
-        function showLoading(on) {
-            document.getElementById('loadingOverlay').classList.toggle('visible', on);
-        }
-
-        function toast(msg, type = 'info') {
-            const el = document.getElementById('toast');
-            el.textContent = msg;
-            el.style.borderColor = type === 'error' ? 'var(--red)' : 'var(--border)';
-            el.style.background = '';  // reset cor
-            el.classList.add('show');
-            clearTimeout(el._timer);
-            el._timer = setTimeout(() => el.classList.remove('show'), 4000);
-        }
-
-        function toastPersistente(msg, type = 'info') {
-            const el = document.getElementById('toast');
-            el.textContent = msg;
-            const cor = type === 'error' ? 'var(--red)' : type === 'warn' ? 'var(--yellow)' : 'var(--border)';
-            el.style.borderColor = cor;
-            el.style.background = type === 'error'
-                ? 'rgba(248,113,113,0.15)'
-                : type === 'warn'
-                ? 'rgba(251,191,36,0.15)'
-                : '';
-            el.classList.add('show');
-            clearTimeout(el._timer);
-            el._timer = setTimeout(() => el.classList.remove('show'), 9000); // 9s visível
-        }
-
-        async function fetchSSLCerts() {
-            try {
-                const res = await fetch(`${API_BASE}/api/status/certificados`);
-                if (!res.ok) return;
-                const alertas = await res.json();
-
-                if (!Array.isArray(alertas) || alertas.length === 0) {
-                    // Sem alertas — garante que a barra sticky fique oculta
-                    const stickyBar = document.getElementById('ssl-sticky');
-                    if (stickyBar) stickyBar.style.display = 'none';
-                    document.body.classList.remove('has-ssl-bar');
-                    return;
-                }
-
-                renderizarCertificados(alertas);
-
-            } catch (e) {
-                console.warn('[SSL]', e);
-            }
-        }
-
-        loadDates();
-        fetchData();
-        checkErrbitErrors();
-        fetchBlankNotices();
-        fetchBlankNoticesTodos();
-        fetchSSLCerts();
-        fetchCpuUsage();
-        fetchRotina();
-        checkTribunaisStatus()
-
-        // ─── CADASTROS EM BRANCO ────────────────────────────────────────────────────
-        async function fetchBlankNotices() {
-            const section = document.getElementById('blank-notices-section');
-            const cardsEl = document.getElementById('blank-notices-cards');
-            
-            if (!section || !cardsEl) return;
-
-            var sEl = document.getElementById('dataInicio');
-            var eEl = document.getElementById('dataFim');
-            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
-            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
-
-            var url = API_BASE + '/processos/blank-notices?t=' + Date.now();
-            if (inicio) url += '&dataInicio=' + inicio;
-            if (fim) url += '&dataFim=' + fim;
-
-            // Mostra placeholder enquanto carrega
-            section.style.display = 'block';
-            cardsEl.innerHTML = `
-                <div class="card-blank-warning" style="cursor:default; opacity:0.45;">
-                    <div class="bw-left">
-                        <div class="bw-icon">⏳</div>
-                        <div class="bw-name">PGE MT</div>
-                        <div class="bw-count" style="font-size:12px; color:var(--muted);">...</div>
-                    </div>
-                </div>`;
-
-            try {
-                var res = await fetch(url);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                var data = await res.json();
-
-                cardsEl.innerHTML = '';
-
-                // Verifica se o backend reportou erro no payload (status != ok)
-                var isError = data.status && data.status !== 'ok';
-                var count = data.total || 0;
-                var errorMsg = data.error_message || 'Falha ao consultar Metabase';
-
-                var card = document.createElement('div');
-                card.className = 'card-blank-warning' + (isError ? ' error' : '');
-                card.style.borderColor = isError ? 'var(--red)' : '';
-                if (!isError) card.onclick = function () { openBlankNoticesDetails(data.instancia); };
-                else card.style.cursor = 'default';
-
-                if (isError) {
-                    const statusLabel = {
-                        'no_config': '⚙️ Não configurado',
-                        'auth_error': '🔐 Falha de autenticação',
-                        'query_error': '🔴 Erro na consulta',
-                    }[data.status] || '🔴 Erro';
-
-                    card.innerHTML = `
-                        <div class="bw-left">
-                            <div class="bw-icon">🔴</div>
-                            <div class="bw-name">${_escapeHtml(data.instancia || 'PGE MT')}</div>
-                            <div class="bw-count" style="font-size:11px; color:var(--red);">${_escapeHtml(statusLabel)}</div>
-                        </div>`;
-                    const statusEl = document.getElementById('blankNoticesStatus');
-                    if (statusEl) statusEl.textContent = '🔴 ' + statusLabel;
-                } else {
-                    card.innerHTML = `
-                        <div class="bw-left">
-                            <div class="bw-icon">${count > 0 ? '⚠️' : '✅'}</div>
-                            <div class="bw-name">${_escapeHtml(data.instancia || 'PGE MT')}</div>
-                            <div class="bw-count ${count === 0 ? 'zero' : ''}">${count.toLocaleString('pt-BR')}</div>
-                            <div class="bw-label">em branco</div>
-                        </div>`;
-                    const statusEl = document.getElementById('blankNoticesStatus');
-                    if (statusEl) statusEl.textContent = '';
-                }
-                cardsEl.appendChild(card);
-
-            } catch (err) {
-                console.error('[Blank Notices]', err);
-                cardsEl.innerHTML = `
-                    <div class="card-blank-warning" style="cursor:default; border-color:var(--red); opacity:0.8;">
-                        <div class="bw-left">
-                            <div class="bw-icon">🔴</div>
-                            <div class="bw-name">PGE MT</div>
-                            <div class="bw-count" style="font-size:11px; color:var(--red);">Sem resposta</div>
-                        </div>
-                    </div>`;
-                const statusEl2 = document.getElementById('blankNoticesStatus');
-                if (statusEl2) statusEl2.textContent = '🔴 Erro de conexão';
-            }
-        }
-
-        async function openBlankNoticesDetails(name) {
-            var bg = document.getElementById('modalBg');
-            var body = document.getElementById('modalBody');
-            var titleEl = document.getElementById('modalTitle');
-            var subEl = document.getElementById('modalSub');
-            if (!bg || !body) return;
-
-            titleEl.textContent = (name || 'PGE Mato Grosso') + ' — Cadastros em Branco';
-            if (subEl) subEl.textContent = 'A carregar...';
-            body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
-            bg.classList.add('open');
-
-            var sEl = document.getElementById('dataInicio');
-            var eEl = document.getElementById('dataFim');
-            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
-            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
-
-            var url = API_BASE + '/processos/blank-notices/detalhes?t=' + Date.now();
-            if (inicio) url += '&dataInicio=' + inicio;
-            if (fim) url += '&dataFim=' + fim;
-
-            try {
-                var res = await fetch(url);
-                if (!res.ok) throw new Error('Erro: ' + res.status);
-                var result = await res.json();
-
-                if (subEl) subEl.textContent = result.total.toLocaleString('pt-BR') + ' registro(s) encontrado(s)';
-
-                if (!result.processos || result.processos.length === 0) {
-                    body.innerHTML = '<p style="color:var(--green);text-align:center;padding:40px;font-size:16px;">✅ Nenhum cadastro em branco encontrado!</p>';
-                    return;
-                }
-
-                var allCols = Object.keys(result.processos[0]);
-                var priority = ['judicial_process_number', 'judicial_processes_pending_notice_id', 'created_at', 'id'];
-                var cols = allCols.filter(function (c) { return c !== 'content'; });
-                var ordered = priority.filter(function (c) { return cols.indexOf(c) !== -1; })
-                    .concat(cols.filter(function (c) { return priority.indexOf(c) === -1; }));
-
-                var html = '<div class="table-wrap"><table><thead><tr>';
-                for (var i = 0; i < ordered.length; i++) {
-                    html += '<th>' + _escapeHtml(ordered[i].replace(/_/g, ' ')) + '</th>';
-                }
-                html += '</tr></thead><tbody>';
-                for (var j = 0; j < result.processos.length; j++) {
-                    var p = result.processos[j];
-                    html += '<tr>';
-                    for (var k = 0; k < ordered.length; k++) {
-                        var colName = ordered[k];
-                        var val = (p[colName] !== null && p[colName] !== undefined) ? p[colName] : '—';
-                        var cls = '';
-                        if (colName === 'judicial_process_number') cls = ' class="num"';
-                        html += '<td' + cls + '>' + _escapeHtml(val) + '</td>';
-                    }
-                    html += '</tr>';
-                }
-                html += '</tbody></table></div>';
-                body.innerHTML = html;
-
-            } catch (err) {
-                console.error(err);
-                body.innerHTML = `
-        <div style="text-align:center; padding:40px;">
-            <p style="color:var(--red); font-size:18px; font-weight:bold; margin-bottom:10px;">⚠️ Falha na conexão</p>
-            <p style="color:var(--muted); font-size:14px;">${_escapeHtml(err.message)}</p>
-            <button class="btn" onclick="fetchData()" style="margin-top:20px;">Tentar Novamente</button>
-        </div>
-    `;
-
-    // Também mostra o Toast (notificação flutuante que você já tem no sistema)
-    toast("Erro ao carregar dados: " + err.message, "error");
-            }
-        }
-
-        // ─── CADASTROS EM BRANCO — TODOS OS CLIENTES (exceto MB5) ──────────────────
-        function _escapeHtml(str) {
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-    async function fetchBlankNoticesTodos() {
-    const section = document.getElementById('blank-notices-all-section');
-    const cardsEl = document.getElementById('blank-notices-all-cards');
-    const statusEl = document.getElementById('blankNoticesAllStatus');
-
-    if (!section || !cardsEl) return;
-
-    var sEl = document.getElementById('dataInicio');
-    var eEl = document.getElementById('dataFim');
-    var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
-    var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
-
-    var url = API_BASE + '/processos/blank-notices/todos?t=' + Date.now();
-    if (inicio) url += '&dataInicio=' + inicio;
-    if (fim) url += '&dataFim=' + fim;
-
-    section.style.display = 'block';
-    cardsEl.innerHTML = `
-        <div class="card-blank-warning" style="cursor:default; opacity:0.45;">
-            <div class="bw-left">
-                <div class="bw-icon">⏳</div>
-                <div class="bw-name">Carregando clientes...</div>
-            </div>
-        </div>`;
-
-    try {
-        var res = await fetch(url);
-        if (res.status === 429) {
-            if (statusEl) statusEl.textContent = '🟡 Muitas requisições, aguarde';
-            return;
-        }
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        var lista = await res.json();
-        if (!Array.isArray(lista)) throw new Error('Resposta inválida do servidor');
-
-        cardsEl.innerHTML = '';
-
-        var algumErro = false;
-        var cardsExibidos = 0;
-
-        lista.forEach(function (item) {
-            var isError = item.status && item.status !== 'ok';
-            var count = item.total || 0;
-
-            // REGRA: Exibe apenas se houver erro OU se o total for maior ou igual a 1
-            if (!isError && count < 1) {
-                return;
-            }
-
-            cardsExibidos++;
-
-            var card = document.createElement('div');
-            card.className = 'card-blank-warning' + (isError ? ' error' : '');
-
-            if (isError) {
-                algumErro = true;
-                card.style.borderColor = 'var(--red)';
-                card.style.cursor = 'default';
-
-                var statusLabel = {
-                    'no_config': '⚙️ Não configurado',
-                    'auth_error': '🔐 Falha de autenticação',
-                    'query_error': '🔴 Erro na consulta',
-                }[item.status] || '🔴 Erro';
-
-                card.innerHTML = `
-                    <div class="bw-left">
-                        <div class="bw-icon">🔴</div>
-                        <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
-                        <div class="bw-count" style="font-size:11px; color:var(--red);">${statusLabel}</div>
-                    </div>`;
-            } else {
-                card.onclick = function () {
-                    openBlankNoticesAllDetails(item.prefixo, item.instancia);
-                };
-                card.innerHTML = `
-                    <div class="bw-left">
-                        <div class="bw-icon">⚠️</div>
-                        <div class="bw-name">${_escapeHtml(item.instancia || item.prefixo)}</div>
-                        <div class="bw-count">${count.toLocaleString('pt-BR')}</div>
-                        <div class="bw-label">em branco</div>
-                    </div>`;
-            }
-
-            cardsEl.appendChild(card);
-        });
-
-        // Oculta a seção inteira caso não haja cards pendentes/com erro
-        if (cardsExibidos === 0) {
-            section.style.display = 'none';
-        } else {
-            section.style.display = 'block';
-        }
-
-        if (statusEl) statusEl.textContent = algumErro ? '' : '';
-
-    } catch (err) {
-        console.error('[Blank Notices Todos]', err);
-        cardsEl.innerHTML = `
-            <div class="card-blank-warning" style="cursor:default; border-color:var(--red); opacity:0.8;">
-                <div class="bw-left">
-                    <div class="bw-icon">🔴</div>
-                    <div class="bw-name">Sem resposta</div>
-                </div>
-            </div>`;
-        if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
-    }
-}
-
-        async function openBlankNoticesAllDetails(prefix, name) {
-            var bg = document.getElementById('modalBg');
-            var body = document.getElementById('modalBody');
-            var titleEl = document.getElementById('modalTitle');
-            var subEl = document.getElementById('modalSub');
-            if (!bg || !body || !prefix) return;
-
-            titleEl.textContent = (name || prefix) + ' — Cadastros em Branco';
-            if (subEl) subEl.textContent = 'A carregar...';
-            body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
-            bg.classList.add('open');
-
-            var sEl = document.getElementById('dataInicio');
-            var eEl = document.getElementById('dataFim');
-            var inicio = (sEl && sEl.value) ? sEl.value : (sessionStorage.getItem('spa_inicio') || '');
-            var fim = (eEl && eEl.value) ? eEl.value : (sessionStorage.getItem('spa_fim') || '');
-
-            var url = API_BASE + '/processos/blank-notices/todos/' + encodeURIComponent(prefix) + '?t=' + Date.now();
-            if (inicio) url += '&dataInicio=' + inicio;
-            if (fim) url += '&dataFim=' + fim;
-
-            try {
-                var res = await fetch(url);
-                if (!res.ok) throw new Error('Erro: ' + res.status);
-                var result = await res.json();
-
-                if (subEl) subEl.textContent = result.total.toLocaleString('pt-BR') + ' registro(s) encontrado(s)';
-
-                if (!result.processos || result.processos.length === 0) {
-                    body.innerHTML = '<p style="color:var(--green);text-align:center;padding:40px;font-size:16px;">✅ Nenhum cadastro em branco encontrado!</p>';
-                    return;
-                }
-
-                var allCols = Object.keys(result.processos[0]);
-                var priority = ['judicial_process_number', 'judicial_processes_pending_notice_id', 'created_at', 'id'];
-                var cols = allCols.filter(function (c) { return c !== 'content'; });
-                var ordered = priority.filter(function (c) { return cols.indexOf(c) !== -1; })
-                    .concat(cols.filter(function (c) { return priority.indexOf(c) === -1; }));
-
-                var html = '<div class="table-wrap"><table><thead><tr>';
-                for (var i = 0; i < ordered.length; i++) {
-                    html += '<th>' + _escapeHtml(ordered[i].replace(/_/g, ' ')) + '</th>';
-                }
-                html += '</tr></thead><tbody>';
-                for (var j = 0; j < result.processos.length; j++) {
-                    var p = result.processos[j];
-                    html += '<tr>';
-                    for (var k = 0; k < ordered.length; k++) {
-                        var colName = ordered[k];
-                        var val = (p[colName] !== null && p[colName] !== undefined) ? p[colName] : '—';
-                        var cls = '';
-                        if (colName === 'judicial_process_number') cls = ' class="num"';
-                        html += '<td' + cls + '>' + _escapeHtml(val) + '</td>';
-                    }
-                    html += '</tr>';
-                }
-                html += '</tbody></table></div>';
-                body.innerHTML = html;
-
-            } catch (err) {
-                console.error(err);
-                body.innerHTML = `
-        <div style="text-align:center; padding:40px;">
-            <p style="color:var(--red); font-size:18px; font-weight:bold; margin-bottom:10px;">⚠️ Falha na conexão</p>
-            <p style="color:var(--muted); font-size:14px;">${_escapeHtml(err.message)}</p>
-            <button class="btn" onclick="fetchData()" style="margin-top:20px;">Tentar Novamente</button>
-        </div>
-    `;
-                toast("Erro ao carregar dados: " + err.message, "error");
-            }
-        }
-        // ─── ROTINA DE EXPEDIENTES ─────────────────────────────────────────────────
-const ROTINA_STATUS_LABEL = {
-    'OK':          { label: 'OK',         cls: 'status-ok',         icon: '✅' },
-    'NAO RODOU':   { label: 'NÃO RODOU',  cls: 'status-nao-rodou',  icon: '🔴' },
-    'SEM_ROTINA':  { label: 'SEM ROTINA', cls: 'status-sem-rotina', icon: '🟡' },
-    'VERIFICAR':   { label: 'VERIFICAR',  cls: 'status-verificar',  icon: '🟡' },
-    'query_error': { label: 'ERRO QUERY', cls: 'status-error',      icon: '⚠️' },
-    'auth_error':  { label: 'ERRO AUTH',  cls: 'status-error',      icon: '🔐' },
-    'no_config':   { label: 'SEM CONFIG', cls: 'status-error',      icon: '⚙️' },
-    'Alerta':      { label: 'Alerta',cls: 'status-nao-rodou',        icon: '🔴' },
-    'DESATIVADO':{ label: 'DESATIVADO', cls: 'status-desativado', icon: '⏸️' },
+  </header>
+  <section class="kpis" id="kpis" aria-label="Indicadores"></section>
+  <div id="trib" aria-label="Tribunais"></div>
+  <div id="fail" role="alert" hidden></div>
+  <main id="grid" aria-live="polite"></main>
+  <details id="orf" hidden><summary></summary><ul></ul></details>
+</div>
+<div id="ov"></div>
+<aside id="dr" role="dialog" aria-modal="true" aria-labelledby="dt" aria-hidden="true">
+  <div class="dh"><h2 id="dt"></h2>
+    <div class="seg" id="tabs" role="group"><button data-t="pend" aria-pressed="true">Pendentes</button><button data-t="rot" aria-pressed="false">Rotina</button><button data-t="blank" aria-pressed="false">Em branco</button><button data-t="trib" aria-pressed="false">Tribunais</button></div>
+    <button class="btn" id="x" aria-label="Fechar">✕</button></div>
+  <div id="sub"></div><div id="body"></div>
+</aside>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(()=>{'use strict';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const core=n=>norm(n).replace(/^(pge|pgm)/,'').replace(/homologacao$/,'');
+const nf=n=>Number(n).toLocaleString('pt-BR');
+// junto com os outros botões
+const conn = document.createElement('span');
+conn.id='conn';
+conn.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mu)';
+conn.innerHTML='<i style="width:7px;height:7px;border-radius:50%;background:var(--wa)"></i>conectando…';
+document.querySelector('.bar').appendChild(conn);
+// Associação manual (trecho normalizado de host/app → prefixo) para casos que o nome não resolve sozinho
+const ALIASES={pgemt:'MB5'};
+const RB=new Set(['NAO RODOU','QUERY_ERROR','AUTH_ERROR','NO_CONFIG']),RW=new Set(['VERIFICAR','SEM_ROTINA','ALERTA']);
+const ROT={OK:['Em dia','ok'],'NAO RODOU':['Não rodou','ba'],VERIFICAR:['Verificar','wa'],SEM_ROTINA:['Sem rotina','wa'],ALERTA:['Alerta','wa'],DESATIVADO:['Desativada','mu'],QUERY_ERROR:['Falha','ba'],AUTH_ERROR:['Falha login','ba'],NO_CONFIG:['Sem config','ba']};
+const S={err:{},em:{},t:{}};let F='ALL',T='ALL',Q='',P='',prevBad=null,mute=localStorage.getItem('spa:mute')==='1';
+const CK='spa:v2';
+/* ───────── fontes de dados (carregam em paralelo e hidratam a tela conforme chegam) ───────── */
+const qs=()=>{const a=sessionStorage.getItem('spa_inicio'),b=sessionStorage.getItem('spa_fim');return a?`?dataInicio=${a}${b?'&dataFim='+b:''}`:''};
+async function j(u,ms=90000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
+  try{const r=await fetch(u,{signal:c.signal,headers:{Accept:'application/json'}});
+    if(r.status===429)throw new Error('Muitas requisições');if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}}
+const SRC={
+  resumo:{every:600,load:()=>j('/processos/resumo'+qs())},
+  rotina:{every:120,load:()=>j('/api/rotina/status')},
+  blank:{every:600,load:async()=>{const[a,b]=await Promise.allSettled([j('/processos/blank-notices/todos'+qs()),j('/processos/blank-notices'+qs())]);
+    if(a.status!=='fulfilled'&&b.status!=='fulfilled')throw 0;const l=a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[];
+    if(b.status==='fulfilled'&&b.value&&b.value.prefixo)l.push(b.value);return l}},
+  cpu:{every:120,load:async()=>(await j('/api/zabbix/cpu')).data||[]},
+  ssl:{every:3600,load:()=>j('/api/status/certificados')},
+  errbit:{every:600,load:async()=>(await j('/api/errbit/expedientes')).errors||[]},
+  trib:{every:300,load:()=>j('/api/status/tribunais')}
 };
+const LBL={resumo:'Pendentes',rotina:'Rotinas',blank:'Em branco',cpu:'CPU',ssl:'SSL',errbit:'Errbit',trib:'Tribunais'};
+const busy={};
+async function run(k){if(busy[k])return;busy[k]=1;
+  try{const d=await SRC[k].load();if(!Array.isArray(d))throw 0;S[k]=d;S.err[k]=0;S.t[k]=Date.now();save()}
+  catch(e){S.err[k]=1;S.em[k]=(e&&e.name==='AbortError')?'tempo esgotado':(e&&e.message)||'resposta inválida';if(k==='resumo')toast(LBL[k]+': '+S.em[k],'ba')}
+  finally{busy[k]=0;render()}}
+const all=()=>Object.keys(SRC).forEach(run);
+function save(){try{localStorage.setItem(CK,JSON.stringify({p:P,s:Object.fromEntries(Object.keys(SRC).map(k=>[k,S[k]]))}))}catch(_){}}
+function hydrate(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.p===P)Object.assign(S,c.s)}catch(_){}}
+/* ───────── modelo: une todas as fontes por cliente ───────── */
+function build(){
+  const m=new Map(),get=(p,n)=>{p=String(p||'').toUpperCase();if(!p)return null;let c=m.get(p);
+    if(!c){c={p,name:n||p,pend:null,pst:null,rot:null,rtot:0,blank:null,bst:null,cpu:null,ssl:[],err:[],msg:''};m.set(p,c)}if(n&&c.name===c.p)c.name=n;return c};
+  (S.resumo||[]).forEach(r=>{const c=get(r.prefixo,r.instancia);if(!c)return;c.pend=r.total_pendentes;c.pst=r.status;if(r.cpu_usage!=null)c.cpu=r.cpu_usage});
+  (S.rotina||[]).forEach(r=>{const c=get(r.prefix,r.name);if(!c)return;c.rot=r.status;c.rtot=r.total;if(r.error_message)c.msg=r.error_message});
+  (S.blank||[]).forEach(r=>{const c=get(r.prefixo,r.instancia);if(!c)return;c.blank=r.total;c.bst=r.status});
+  const L=[...m.values()];
+  L.forEach(c=>{c.core=core(c.name);c.type=/^pge/i.test(c.name)?'PGE':/^pgm/i.test(c.name)?'PGM':'OUT';c.hay=norm(c.name+c.p);c.trb=tribDe(c);c.tbad=c.trb.some(t=>t.status!=='OK')});
+  const find=t=>{t=norm(t);for(const a in ALIASES)if(t.includes(a)&&m.has(ALIASES[a]))return m.get(ALIASES[a]);
+    let b=null;for(const c of L)if(c.core.length>=3&&t.includes(c.core)&&(!b||c.core.length>b.core.length))b=c;return b};
+  const orf={ssl:[],err:[]};
+  (S.cpu||[]).forEach(x=>{const c=find(x.name);if(c&&c.cpu==null)c.cpu=x.cpu_usage});
+  (S.ssl||[]).forEach(x=>{const c=find(x.host);c?c.ssl.push(x):orf.ssl.push(x)});
+  (S.errbit||[]).forEach(x=>{const c=find(x.app_name);c?c.err.push(x):orf.err.push(x)});
+  L.forEach(c=>{const r=String(c.rot||'').toUpperCase();c.rk=r==='OK'?'OK':r;c.rbad=RB.has(r);c.minssl=c.ssl.length?Math.min(...c.ssl.map(s=>s.dias_restantes)):null;
+    c.sev=(c.pst&&c.pst!=='ok')||c.rbad||c.tbad||(c.minssl!==null&&c.minssl<=7)?3:(RW.has(r)||c.blank>0||c.cpu>=85||c.ssl.length||c.err.length)?2:c.pend>0?1:0});
+  L.sort((a,b)=>b.sev-a.sev||(b.pend||0)-(a.pend||0)||a.name.localeCompare(b.name,'pt-BR'));
+  return{L,orf}}
+const FIL={
+  ALL:()=>1,
+  attn:c=>c.sev>=2,
+  pend:c=>(c.pend||0)>0,        
+  rot:c=>c.rbad||RW.has(c.rk),
+  blank:c=>c.blank>0,
+  ssl:c=>c.ssl.length>0,
+  err:c=>c.err.length>0
+};
+/* ───────── render ───────── */
+let raf=0;const render=()=>{raf||(raf=requestAnimationFrame(()=>{raf=0;paint()}))};
+const ld=(c,k)=>S[k]===undefined&&!S.err[k];
+const cell=(c,k,v,cls,lab,big)=>`<div class="m ${big?'big ':''}${v==null?'':cls}"><b>${v!=null?v:ld(c,k)?'<i class="sh"></i>':'—'}</b><span>${lab}</span></div>`;
+function paint(){
+  const{L,orf}=build();
+  const tot=L.reduce((s,c)=>s+(c.pend||0),0),att=L.filter(c=>c.sev>=2).length,rb=L.filter(FIL.rot).length,bl=L.reduce((s,c)=>s+(c.blank||0),0),ss=L.reduce((s,c)=>s+c.ssl.length,0)+orf.ssl.length,er=(S.errbit||[]).length;
+  const K=(f,n,l,cls)=>`<button class="kpi ${cls}" data-f="${f}" aria-pressed="${F===f}"><b>${n}</b><span>${l}</span></button>`;
+  $('#kpis').innerHTML =
+  K('ALL', L.length, 'Monitorados', '') +
+  K('attn', att, 'Precisam de atenção', att?'bad':'good') +
+  K('pend', nf(tot), 'Expedientes não cadastrados', tot?'warn':'good') +
+  K('rot', rb, 'Rotinas com Erro', rb?'bad':'good') +
+  K('blank', nf(bl), 'Cadastros em branco', bl?'warn':'good') +
+  K('ssl', ss, 'Certificados para vencer', ss?'warn':'good') +
+  K('err', er, 'Erros Errbit (hoje)', er?'warn':'good');
 
-let _rotinaAlertSuppressUntil = 0;
-let _rotinaAlertAudioCtx = null;
-let _rotinaAlertIntervalId = null;
+  const tribs = S.trib || [];
+if (tribs.length) {
+  // Agrupa os itens da API pelo nome do cliente
+  const porCliente = tribs.reduce((acc, item) => {
+    const cli = item.cliente || 'Outros';
+    if (!acc[cli]) acc[cli] = [];
+    acc[cli].push(item);
+    return acc;
+  }, {});
 
-// Cria AudioContext só após interação do usuário (exigência dos browsers)
-function _ensureAudioCtx() {
-    if (_rotinaAlertAudioCtx) return _rotinaAlertAudioCtx;
-    try {
-        _rotinaAlertAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch (_) { /* browser sem suporte */ }
-    return _rotinaAlertAudioCtx;
+  $('#trib').innerHTML = Object.entries(porCliente).map(([cliente, lista]) => {
+    // Verifica se algum tribunal do cliente falhou
+    const possuiErro = lista.some(t => t.status !== 'OK');
+    const statusFront = possuiErro 
+      ? '<span style="font-size: 11px; color: var(--wa);">⚠️ Verificar integrações</span>' 
+      : '<span style="font-size: 11px; color: var(--ok)</span>';
+
+    return `
+      <div style="background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; width: 100%; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="color: var(--tx); font-size: 14px;">🏢 Cliente: ${esc(cliente)}</strong>
+          ${statusFront}
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          ${lista.map(t => `
+            <a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+              <span class="pill ${t.status === 'OK' ? '' : 'off'}" 
+                    title="HTTP ${esc(t.code ?? '—')}${t.error ? ' · Error: ' + esc(t.error) : ''}">
+                ${esc(t.nome)} ·${t.status === 'OK' ? 'online' : 'fora do ar'} ↗
+              </span>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+} else {
+  $('#trib').innerHTML = S.err.trib
+    ? `<div class="alertbox" role="alert"><span>⚠️ Não foi possível carregar os tribunais (${esc(S.em.trib||'erro')}).</span><button class="btn" data-retry="trib">Tentar novamente</button></div>`
+    : ld(0, 'trib')
+      ? '<span class="sh"></span>'
+      : '<span style="color: var(--mu); font-size: 12px;">Nenhum tribunal retornado ainda (a verificação roda a cada 5 min).</span>';
 }
 
-// Toca um bipe de alerta (dois tons descendentes — "sirene curta")
-function _tocarAlertaRotina() {
-    const ctx = _ensureAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  // ── Estado de cada fonte + faixa de erro (erro NUNCA esconde os cards) ──
+  const bad=Object.keys(SRC).filter(k=>S.err[k]);
+  $('#src').innerHTML=Object.keys(SRC).map(k=>`<span title="${esc(S.err[k]?(S.em[k]||'falha'):S[k]!==undefined?'ok':'carregando')}"><i class="${S.err[k]?'er':S[k]!==undefined?'ok':''}"></i>${LBL[k]}</span>`).join('');
+  const fl=$('#fail');
+  fl.hidden=!bad.length;
+  fl.innerHTML=bad.length
+    ? `<span>⚠️ ${bad.length===1?'Fonte com falha':'Fontes com falha'}: ${bad.map(k=>`<b>${LBL[k]}</b> (${esc(S.em[k]||'erro')})`).join(' · ')}${bad.some(k=>S[k]!==undefined)?' — exibindo os últimos dados salvos.':''}</span><button class="btn" data-retry="all">Tentar novamente</button>`
+    : '';
 
-    const now = ctx.currentTime;
+  // ── Cards de clientes ──
+  const list=L.filter(c=>(T==='ALL'||c.type===T)&&FIL[F](c)&&(!Q||c.hay.includes(norm(Q))));
+  const loading=!L.length&&['resumo','rotina','blank'].some(k=>!S.err[k]&&S[k]===undefined);
+  $('#grid').innerHTML=list.length?list.map(card).join(''):loading?skel()
+    :L.length?'<p class="empty">Nenhum cliente corresponde aos filtros.</p>'
+    :'<p class="empty">Sem dados de clientes. Veja as fontes com falha acima e tente novamente.</p>';
 
-    // Tom 1
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'square';
-    osc1.frequency.setValueAtTime(880, now);
-    osc1.frequency.setValueAtTime(660, now + 0.18);
-    gain1.gain.setValueAtTime(0.0001, now);
-    gain1.gain.exponentialRampToValueAtTime(0.15, now + 0.02);
-    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-    osc1.connect(gain1).connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.35);
+  // ── SSL/Errbit sem cliente associado ──
+ /* const o=$('#orf'),no=orf.ssl.length+orf.err.length;
+  o.hidden=!no;
+  if(no){o.querySelector('summary').textContent=`Sem cliente associado (${no})`;
+    o.querySelector('ul').innerHTML=orf.ssl.map(x=>`<li>🔒 ${esc(x.host)} · ${esc(x.dias_restantes)}d</li>`).concat(orf.err.map(x=>`<li>🐞 ${esc(x.app_name)}</li>`)).join('')}
+  if(document.body.classList.contains('open')&&tab==='trib')renderTribTab(L);*/
+}
+const skel=()=>Array(12).fill('<div class="card"><div class="ch"><h3><i class="sh" style="width:140px"></i></h3></div><div class="ms"><div class="m"><i class="sh"></i></div><div class="m"><i class="sh"></i></div><div class="m"><i class="sh"></i></div><div class="m"><i class="sh"></i></div></div></div>').join('');
+function card(c){
+  const[rl,rc]=ROT[c.rk]||(c.rk?['Verificar','wa']:[null,'']);
+  const cpuc=c.cpu==null?'':c.cpu>=85?'ba':c.cpu>=70?'wa':'ok';
+  const err=c.pst&&c.pst!=='ok';
+  const chips=(c.minssl!==null?`<span class="chip ${c.minssl<=7?'ba':''}" title="${esc(c.ssl.map(s=>s.host).join(', '))}">🔒Certificado expira em  ${c.minssl} dias</span>`:'')+/*(c.err.length?`<span class="chip">🐞 ${c.err.length} erro(s)</span>`:'')+*/(c.cpu>=85?'<span class="chip ba">CPU alta</span>':'')+(c.tbad?`<span class="chip ba" title="${esc(c.trb.filter(t=>t.status!=='OK').map(t=>t.nome).join(', '))}">⚖ Tribunal com falha</span>`:'')/*+(err?`<span class="chip ba">⚠ ${esc(c.pst)}</span>`:'')*/;
+  return`<article class="card s${c.sev}" role="button" tabindex="0" data-p="${esc(c.p)}" aria-label="${esc(c.name)}: abrir detalhes">
+<div class="ch"><h3 title="${esc(c.name)}">${esc(c.name)}</h3>${c.type!=='OUT'?`<span class="tag ${c.type}">${c.type}</span>`:''}</div>
+<div class="ms">${cell(c,'resumo',err?'erro':c.pend!=null?nf(c.pend):null,err?'ba':c.pend?'wa':'ok','Pendentes',1)}
+${cell(c,'rotina',rl,rc,'Rotina'+(c.rtot?` · ${c.rtot}`:''))}
+${cell(c,'blank',c.blank!=null?nf(c.blank):null,c.blank?'wa':'ok','Em branco')}
+${cell(c,'cpu',c.cpu!=null?Number(c.cpu).toFixed(0)+'%':null,cpuc,'CPU')}</div>
+<div class="cf">${chips}</div></article>`}
+/* ───────── gaveta de detalhes (carrega só ao abrir) ───────── */
+const DC=new Map();let cur=null,tab='pend';
+const DT={pend:p=>`/processos/detalhes/${p}${qs()}`,rot:p=>`/api/rotina/detalhes/${p}`,blank:p=>p==='MB5'?null:`/processos/blank-notices/todos/${p}${qs()}`};
+const PR={pend:['judicial_process_number','failure_message','available_at','procedure_id','created_at'],rot:['description','status_rotina','last_start','last_finished','last_processing'],blank:['judicial_process_number','created_at']};
+const isoRe=/^\d{4}-\d{2}-\d{2}T/;
+const fv=(col,v)=>{if(v==null||v==='')return'—';if(col==='status_rotina'){const[l,k]=ROT[String(v).toUpperCase()]||[v,'mu'];return`<span class="bd" style="color:var(--${k==='ba'?'ba':k==='ok'?'ok':k==='wa'?'wa':'mu'});background:var(--panel2)">${esc(l)}</span>`}
+  if(typeof v==='string'&&isoRe.test(v)){const d=new Date(v);if(!isNaN(d))return esc(d.toLocaleString('pt-BR'))}return esc(typeof v==='object'?JSON.stringify(v):v)};
+async function open(p){const c=build().L.find(x=>x.p===p);cur=p;$('#dt').textContent=c?c.name:p;document.body.classList.add('open');$('#dr').setAttribute('aria-hidden','false');$('#x').focus();load(tab)}
+function close(){document.body.classList.remove('open');$('#dr').setAttribute('aria-hidden','true')}
 
-    // Tom 2 (eco)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'square';
-    osc2.frequency.setValueAtTime(880, now + 0.4);
-    osc2.frequency.setValueAtTime(660, now + 0.58);
-    gain2.gain.setValueAtTime(0.0001, now + 0.4);
-    gain2.gain.exponentialRampToValueAtTime(0.15, now + 0.42);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
-    osc2.connect(gain2).connect(ctx.destination);
-    osc2.start(now + 0.4);
-    osc2.stop(now + 0.75);
+function renderGauge(elId, series, label, unit){
+  const el=document.getElementById(elId); if(!el)return;
+  if(!series||!series.length){el.innerHTML=`<h4>${label} · 24h</h4><p class="empty" style="padding:30px 0">Sem dados no Zabbix</p>`;return}
+  const last = series[series.length-1].v;
+  const pct = Math.max(0, Math.min(100, last));
+  const color = pct>=85?'var(--ba)':pct>=70?'var(--wa)':'var(--ok)';
+  const R=42, C=2*Math.PI*R, off=C*(1-pct/100);
+
+  // sparkline
+  let path='';
+  if(series && series.length>1){
+    const minT=series[0].t, maxT=series[series.length-1].t;
+    const w=200,h=40;
+    const pts=series.map(p=>{
+      const x=((p.t-minT)/(maxT-minT||1))*w;
+      const y=h-((p.v/100)*h);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    path=`<polyline fill="none" stroke="${color}" stroke-width="1.5" points="${pts}"/>`;
+  }
+
+  el.innerHTML=`
+    <svg viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line)" stroke-width="10"/>
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="10"
+        stroke-dasharray="${C}" stroke-dashoffset="${off}"
+        stroke-linecap="round" transform="rotate(-90 60 60)"
+        style="transition:stroke-dashoffset .4s"/>
+      <text x="60" y="58" text-anchor="middle" class="val">${last.toFixed(0)}${unit}</text>
+      <text x="60" y="76" text-anchor="middle" class="lbl">${label}</text>
+    </svg>
+    <svg class="spark" viewBox="0 0 200 40" preserveAspectRatio="none">${path}</svg>`;
 }
 
-async function fetchRotina() {
-    const grid = document.getElementById('rotina-grid');
-    const lastCheck = document.getElementById('rotinaLastCheck');
-    if (!grid) return;
+/* tribunais do cliente: casa o campo "cliente" do TRIBUNAIS_CONFIG com o nome do card (ex.: "Amargosa" ↔ "PGM Amargosa") */
+function tribDe(c){
+  if(!c||!c.core)return[];
+  return(S.trib||[]).filter(t=>{const n=norm(t.cliente);return n.length>=3&&c.core.length>=3&&(c.core===n||c.core.includes(n)||n.includes(c.core))})}
+function renderTribTab(L){
+  const c=(L||build().L).find(x=>x.p===cur),body=$('#body'),sub=$('#sub');
+  if(!c){body.innerHTML='<p class="empty">Cliente não encontrado.</p>';return}
+  if(S.err.trib&&!(S.trib||[]).length){sub.textContent='';body.innerHTML=`<p class="empty" style="color:var(--ba)">Erro ao carregar tribunais: ${esc(S.em.trib||'erro')}<br><button class="btn" style="margin-top:12px" data-retry="trib">Tentar novamente</button></p>`;return}
+  if(S.trib===undefined){sub.textContent='Consultando…';body.innerHTML='<p class="empty">Carregando…</p>';return}
+  const l=c.trb||[],bad=l.filter(t=>t.status!=='OK').length;
+  sub.textContent=l.length?`${nf(l.length)} tribunal(is)${bad?` · ${bad} com falha`:' · todos online'}`:'';
+  body.innerHTML=l.length?l.map(t=>{const ok=t.status==='OK';
+    return`<div class="tr${ok?'':' off'}"><div class="th"><b>${esc(t.nome)}</b><span class="bd" style="color:var(--${ok?'ok':'ba'});background:var(--panel2)">${ok?'Online':'Fora do ar'}</span></div>
+<div class="tm">HTTP ${esc(t.code??'—')}${t.cliente?' · '+esc(t.cliente):''}</div>${t.error?`<div class="te">${esc(t.error)}</div>`:''}
+${/^https?:\/\//i.test(t.url||'')?`<a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer">Abrir endpoint de teste ↗</a>`:''}</div>`}).join('')
+    :'<p class="empty">Nenhum tribunal configurado para este cliente.<br><small>Adicione um item com <code>"cliente": "'+esc(c.core)+'"</code> no TRIBUNAIS_CONFIG.</small></p>'}
+async function load(t){
+  tab=t;
+  $$('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
+  if(t==='trib'){renderTribTab();return}
+  const body=$('#body'),sub=$('#sub'),u=DT[t](cur);
+  if(!u){sub.textContent='';body.innerHTML='<p class="empty">Detalhamento indisponível.</p>';return}
 
-    try {
-        const res = await fetch(`${API_BASE}/api/rotina/status?t=${Date.now()}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const lista = await res.json();
-        if (!Array.isArray(lista)) throw new Error('Resposta inválida');
+  const key=u,hit=DC.get(key);let d;
+  if(hit&&Date.now()-hit.t<60000)d=hit.d;
+  else{
+    sub.textContent='Consultando…';
+    body.innerHTML='<p class="empty">Carregando…</p>';
+    try{d=await j(u,60000);DC.set(key,{t:Date.now(),d})}
+    catch(e){body.innerHTML=`<p class="empty" style="color:var(--ba)">Erro: ${esc(e.message)}<br><button class="btn" id="retry" style="margin-top:12px">Tentar novamente</button></p>`;return}
+  }
+  if(!cur||tab!==t||DT[t](cur)!==key)return;
 
-        grid.innerHTML = '';
+  // ── Gauges de infraestrutura (CPU/Memória) — só na aba Pendentes ──
+  let gaugeHtml = '';
+  if(t==='pend'){
+    gaugeHtml = `
+      <div class="gauges">
+        <div class="gauge" id="g-cpu"><h4>CPU · 24h</h4><div class="sh" style="height:120px"></div></div>
+        <div class="gauge" id="g-mem"><h4>Memória · 24h</h4><div class="sh" style="height:120px"></div></div>
+      </div>`;
+  }
 
-        if (lista.length === 0) {
-            grid.innerHTML = `<div class="rotina-card status-ok" style="cursor:default; opacity:.7;">
-                <div class="rc-header"><div class="rc-name">Nenhum cliente configurado</div></div>
-            </div>`;
-            return;
-        }
+  const rows=d.processos||d.rotinas||[];
+  sub.textContent=`${nf(d.total??rows.length)} registro(s)${d.cached?' · ⚡ cache':''}`;
 
-        lista.forEach(item => {
-            const meta = ROTINA_STATUS_LABEL[item.status] || ROTINA_STATUS_LABEL['VERIFICAR'];
-            const card = document.createElement('div');
-            card.className = `rotina-card ${meta.cls}`;
-            if (item.status === 'ok' || item.status === 'SEM_ROTINA' || meta.cls === 'status-error') {
-                card.style.cursor = 'default';
-            } else {
-                card.onclick = () => openRotinaDetalhes(item.prefix, item.name);
-            }
+  if(!rows.length){
+    body.innerHTML=gaugeHtml+'<p class="empty">Nenhum registro.</p>';
+  }else{
+    const cols=Object.keys(rows[0]).filter(c=>c!=='content');
+    const pr=PR[t].filter(c=>cols.includes(c));
+    const O=pr.concat(cols.filter(c=>!pr.includes(c)));
+    const M=300;
+    body.innerHTML=gaugeHtml+
+      `<table><thead><tr>${O.map(c=>`<th>${esc(c.replace(/_/g,' '))}</th>`).join('')}</tr></thead>
+      <tbody>${rows.slice(0,M).map(r=>`<tr>${O.map(c=>`<td class="${c==='judicial_process_number'?'n':c==='failure_message'?'er':''}">${fv(c,r[c])}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      ${rows.length>M?`<p class="empty">Mostrando ${M} de ${nf(rows.length)}.</p>`:''}`;
+  }
 
-            const detail = item.error_message
-                ? `<div class="rc-meta" style="color:var(--red);">${_escapeHtml(item.error_message)}</div>`
-                : `<div class="rc-meta">${item.total || 0} Rotinas</div>`;
+  // ── Carrega histórico Zabbix em paralelo (não bloqueia) ──
+  if(t==='pend'){
+    const c = build().L.find(x=>x.p===cur);
+    if(c){
+      fetch(`/api/zabbix/history/${encodeURIComponent(c.name)}?hours=24`)
+        .then(r=>r.ok?r.json():null)
+        .then(h=>{
+          if(!h)return;
+          renderGauge('g-cpu', h.cpu, 'CPU', '%');
+          renderGauge('g-mem', h.memory, 'Memória', '%');
+        })
+        .catch(()=>{});
+    }
+  }
+}
 
-            card.innerHTML = `
-                <div class="rc-header">
-                    <div class="rc-name" title="${_escapeHtml(item.name)}">${_escapeHtml(item.name)}</div>
-                    <div class="rc-status">${meta.icon} ${meta.label}</div>
-                </div>
-                ${detail}
-            `;
-            grid.appendChild(card);
+  /* ───────── alertas, período, eventos ───────── */
+let ac;function alerta(n){toast('🔴 Rotina com problema: '+n.slice(0,4).join(', ')+(n.length>4?'…':''),'ba',12000);if(mute)return;
+  try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.setValueAtTime(.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.6);o.start();o.stop(ac.currentTime+.6)}catch(_){}}
+function toast(m,k='',ms=5000){const d=document.createElement('div');d.className=k;d.textContent=m;$('#toast').appendChild(d);setTimeout(()=>d.remove(),ms)}
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function setPer(v){P=v;const n=new Date(),a=v==='hoje'?n:v==='semana'?new Date(n-6*864e5):v==='mes'?new Date(n.getFullYear(),n.getMonth(),1):null;
+  a?(sessionStorage.setItem('spa_inicio',ymd(a)),sessionStorage.setItem('spa_fim',ymd(n))):(sessionStorage.removeItem('spa_inicio'),sessionStorage.removeItem('spa_fim'));
+  DC.clear();['resumo','blank'].forEach(k=>{S[k]=undefined;S.err[k]=0});render();run('resumo');run('blank')}
+$('#per').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#per button').forEach(x=>x.setAttribute('aria-pressed',x===b));setPer(b.dataset.v)};
+$('#tipo').onclick=e=>{const b=e.target.closest('button');if(!b)return;T=b.dataset.v;$$('#tipo button').forEach(x=>x.setAttribute('aria-pressed',x===b));render()};
+$('#kpis').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;F=F===b.dataset.f?'ALL':b.dataset.f;render()};
+$('#grid').onclick=e=>{const c=e.target.closest('.card[data-p]');c&&open(c.dataset.p)};
+$('#grid').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card[data-p]');if(c){e.preventDefault();open(c.dataset.p)}}};
+$('#tabs').onclick=e=>{const b=e.target.closest('button');b&&cur&&load(b.dataset.t)};
+$('#body').onclick=e=>{if(e.target.id==='retry'){DC.delete(DT[tab](cur));load(tab)}};
+$('#ov').onclick=$('#x').onclick=close;
+document.addEventListener('click',e=>{const b=e.target.closest('[data-retry]');if(!b)return;const k=b.dataset.retry;
+  (k==='all'?Object.keys(SRC).filter(x=>S.err[x]):[k]).forEach(x=>{S.err[x]=0;S.em[x]='';run(x)});render()});
+$('#rf').onclick=()=>{DC.clear();all();toast('Atualizando…')};
+$('#fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{});
+$('#mute').onclick=()=>{mute=!mute;localStorage.setItem('spa:mute',mute?'1':'0');$('#mute').textContent=mute?'🔕':'🔔';$('#mute').setAttribute('aria-pressed',mute)};
+$('#mute').textContent=mute?'🔕':'🔔';
+let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{Q=e.target.value;render()},120)};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close();else if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();$('#q').focus()}});
+/* ───────── ciclo de vida ───────── */
+const clk=$('#clock');
+setInterval(()=>{
+  if(document.hidden)return;
+  const n=Date.now();
+  for(const k in SRC){
+    // rotina e tribunais agora chegam via SSE
+    if(k==='rotina'||k==='trib')continue;
+    if(!busy[k]&&n-(S.t[k]||0)>SRC[k].every*1000)run(k);
+  }
+},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){const n=Date.now();for(const k in SRC)if(n-(S.t[k]||0)>SRC[k].every*1000)run(k)}});
+sessionStorage.removeItem('spa_inicio');sessionStorage.removeItem('spa_fim');
+/* ─── SSE (realtime) ─── */
+let es;
+function connectSSE(){
+  if(es) try{es.close()}catch(_){}
+  es = new EventSource('/api/stream');
+es.onopen = () => {
+  const c = document.getElementById('conn');
+  if(c) c.innerHTML='<i style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></i>tempo real';
+};
+  es.onmessage = e => {
+    try{
+      const d = JSON.parse(e.data);
+      if(Array.isArray(d.tribunais)){
+        S.trib = d.tribunais;
+        S.t.trib = Date.now();
+      }
+      if(Array.isArray(d.rotina)){
+        // merge por prefix, mantendo os campos que a SSE não traz
+        const byP = new Map((S.rotina||[]).map(r=>[r.prefix,r]));
+        d.rotina.forEach(r=>{
+          const old = byP.get(r.prefix) || {};
+          byP.set(r.prefix, {...old, ...r});
         });
+        S.rotina = [...byP.values()];
+        S.t.rotina = Date.now();
+      }
+      render();
+    }catch(_){}
+  };
 
-        if (lastCheck) {
-            lastCheck.textContent = `Verificado às ${new Date().toLocaleTimeString('pt-BR')}`;
-        }
-
-
-    } catch (err) {
-        console.error('[Rotina]', err);
-        grid.innerHTML = `<div class="rotina-card status-error" style="cursor:default;">
-            <div class="rc-header">
-                <div class="rc-name">Falha ao carregar rotinas</div>
-                <div class="rc-status">⚠️ ERRO</div>
-            </div>
-            <div class="rc-meta" style="color:var(--red);">${_escapeHtml(err.message)}</div>
-        </div>`;
-    }
-}
-
-async function verificarAlertasRotina() {
-    if (Date.now() < _rotinaAlertSuppressUntil) return;
-
-    try {
-        const res = await fetch(`${API_BASE}/api/rotina/alertas?t=${Date.now()}`);
-        if (!res.ok) return;
-        const alertas = await res.json();
-        if (!Array.isArray(alertas) || alertas.length === 0) return;
-
-        exibirPopupRotina(alertas);
-    } catch (e) {
-        console.warn('[Rotina Alertas]', e);
-    }
-}
-
-function exibirPopupRotina(alertas) {
-    const overlay = document.getElementById('rotinaAlertOverlay');
-    const listEl = document.getElementById('rotinaAlertList');
-    const subEl = document.getElementById('rotinaAlertSub');
-    if (!overlay || !listEl) return;
-
-    subEl.textContent = `${alertas.length} cliente(s) com problema na rotina de expedientes`;
-
-    listEl.innerHTML = '';
-    alertas.forEach(a => {
-        const meta = ROTINA_STATUS_LABEL[a.status] || { label: a.status };
-        const detail = a.error_message || meta.label;
-        const item = document.createElement('div');
-        item.className = 'ra-item';
-        item.innerHTML = `
-            <div class="ra-name">${_escapeHtml(a.name)}</div>
-            <div class="ra-detail">${_escapeHtml(detail)}</div>
-        `;
-        listEl.appendChild(item);
-    });
-
-    overlay.classList.add('open');
-
-    // Som: bipe imediato + repetição a cada 12s enquanto o popup estiver aberto
-    _tocarAlertaRotina();
-    if (_rotinaAlertIntervalId) clearInterval(_rotinaAlertIntervalId);
-    _rotinaAlertIntervalId = setInterval(() => {
-        if (!document.getElementById('rotinaAlertOverlay').classList.contains('open')) {
-            clearInterval(_rotinaAlertIntervalId);
-            _rotinaAlertIntervalId = null;
-            return;
-        }
-        _tocarAlertaRotina();
-    }, 12000);
-}
-
-function fecharRotinaAlert() {
-    const overlay = document.getElementById('rotinaAlertOverlay');
-    if (overlay) overlay.classList.remove('open');
-    if (_rotinaAlertIntervalId) {
-        clearInterval(_rotinaAlertIntervalId);
-        _rotinaAlertIntervalId = null;
-    }
-}
-
-function silenciarRotinaHoje() {
-    // Silencia por 1h
-    _rotinaAlertSuppressUntil = Date.now() + 60 * 60 * 1000;
-    fecharRotinaAlert();
-    toast('Alertas de rotina silenciados por 1 hora', 'info');
-}
-
-async function openRotinaDetalhes(prefix, name) {
-    const bg = document.getElementById('modalBg');
-    const body = document.getElementById('modalBody');
-    const titleEl = document.getElementById('modalTitle');
-    const subEl = document.getElementById('modalSub');
-
-    if (!bg || !body || !titleEl) {
-        console.warn('[Rotina Detalhes] Elementos do modal não encontrados no DOM');
-        return;
-    }
-
-    // ── Reset visual + loading ────────────────────────────────────────────
-    titleEl.textContent = `${name} — Rotina de Expedientes`;
-    if (subEl) subEl.textContent = 'A carregar...';
-    body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px">Consultando Metabase...</div>';
-    bg.classList.add('open');
-
-    // ── Helper: escape seguro (redeclarado localmente para não depender do global) ──
-    const esc = (v) => String(v === null || v === undefined ? '—' : v)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-
-    // ── Helper: formata data ISO em pt-BR ─────────────────────────────────
-        const fmtDate = (val) => {
-        if (val === null || val === undefined || val === '—') return '—';
-
-        const s = String(val).trim();
-
-        // Guarda: só aceita formatos reconhecíveis como data
-        //   ISO:     2026-09-30T14:22:00  ou  2026-09-30 14:22:00
-        //   Só data: 2026-09-30
-        const pareceData = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?/.test(s);
-        if (!pareceData) {
-            // Não é data — devolve o texto original (ex: "Finalizado com sucesso: 96")
-            return esc(val);
-        }
-
-        try {
-            const d = new Date(s);
-            if (isNaN(d.getTime())) return esc(val);
-            return d.toLocaleString('pt-BR', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
-        } catch (_) {
-            return esc(val);
-        }
-    };
-
-    // ── Helper: badge colorido para status_rotina ─────────────────────────
-    const statusBadge = (status) => {
-        if (!status) return '—';
-        const s = String(status).toUpperCase();
-        let cor = 'var(--muted)';
-        let bgc = 'rgba(148,163,184,.12)';
-        if (s === 'OK')             { cor = 'var(--green)';  bgc = 'rgba(74,222,128,.15)'; }
-        else if (s === 'NAO RODOU') { cor = 'var(--red)';    bgc = 'rgba(248,113,113,.2)'; }
-        else if (s === 'VERIFICAR') { cor = 'var(--yellow)'; bgc = 'rgba(251,191,36,.15)'; }
-        return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${bgc};color:${cor};">${esc(s)}</span>`;
-    };
-
-    try {
-        const url = `${API_BASE}/api/rotina/detalhes/${encodeURIComponent(prefix)}?t=${Date.now()}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const result = await res.json();
-
-        // ── Validação defensiva do payload ────────────────────────────────
-        if (!result || typeof result !== 'object') {
-            throw new Error('Resposta inválida do servidor');
-        }
-        if (result.status === 'no_config' || result.status === 'auth_error' || result.status === 'query_error') {
-            const msg = result.error_message || 'Falha ao consultar a rotina deste cliente';
-            body.innerHTML = `
-                <div style="text-align:center;padding:40px;">
-                    <p style="color:var(--red);font-size:16px;font-weight:600;margin-bottom:8px;">⚠️ ${esc(msg)}</p>
-                    <p style="color:var(--muted);font-size:13px;">Status: ${esc(result.status)}</p>
-                </div>`;
-            if (subEl) subEl.textContent = `status: ${result.status}`;
-            return;
-        }
-
-        if (subEl) {
-            subEl.textContent = `${(result.total || 0).toLocaleString('pt-BR')} registro(s) · status: ${result.status || '—'}`;
-        }
-
-        // ── Sem registros ─────────────────────────────────────────────────
-        if (!Array.isArray(result.rotinas) || result.rotinas.length === 0) {
-            body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Nenhuma rotina configurada para este cliente.</p>';
-            return;
-        }
-
-        // ── Define ordem das colunas ──────────────────────────────────────
-        const priority = ['description', 'status_rotina', 'last_start', 'last_finished', 'last_processing'];
-        const firstRow = result.rotinas[0] || {};
-        const allCols = Object.keys(firstRow);
-        const ordered = priority
-            .filter(c => allCols.indexOf(c) !== -1)
-            .concat(allCols.filter(c => priority.indexOf(c) === -1));
-
-        // ── Monta HTML da tabela ──────────────────────────────────────────
-        let html = '<div class="table-wrap"><table><thead><tr>';
-        for (const col of ordered) {
-            html += '<th>' + esc(col.replace(/_/g, ' ')) + '</th>';
-        }
-        html += '</tr></thead><tbody>';
-
-        for (const row of result.rotinas) {
-            html += '<tr>';
-            for (const col of ordered) {
-                const raw = (row[col] !== null && row[col] !== undefined) ? row[col] : '—';
-
-                if (col === 'status_rotina') {
-                    html += '<td>' + statusBadge(raw) + '</td>';
-                } else if (col === 'last_start' || col === 'last_finished' || col === 'last_processing') {
-                    html += '<td style="font-family:monospace;font-size:12px;color:var(--text);">' + fmtDate(raw) + '</td>';
-                } else if (col === 'description') {
-                    html += '<td style="font-weight:600;color:var(--text);">' + esc(raw) + '</td>';
-                } else {
-                    html += '<td>' + esc(raw) + '</td>';
-                }
-            }
-            html += '</tr>';
-        }
-        html += '</tbody></table></div>';
-
-        body.innerHTML = html;
-
-    } catch (err) {
-        console.error('[Rotina Detalhes]', err);
-        body.innerHTML = `
-            <div style="text-align:center;padding:40px;">
-                <p style="color:var(--red);font-size:18px;font-weight:bold;margin-bottom:10px;">⚠️ Falha na conexão</p>
-                <p style="color:var(--muted);font-size:14px;">${esc(err.message)}</p>
-                <button class="btn" style="margin-top:20px;"
-                    onclick="openRotinaDetalhes('${esc(prefix)}', '${esc(name)}')">Tentar Novamente</button>
-            </div>
-        `;
-        if (typeof toast === 'function') {
-            toast('Erro ao carregar rotina: ' + err.message, 'error');
-        }
-    }
-}
-// ─── INTEGRAÇÃO COM O CICLO DE VIDA DO DASHBOARD ───────────────────────────
-// Sobrescreve/estende o fetchData existente para também buscar a rotina.
-// Guarda a referência original para não quebrar a cadeia.
-(function () {
-    const _originalFetchData = window.fetchData;
-    window.fetchData = async function (...args) {
-        // Executa o fetch original primeiro (não bloqueia em caso de erro dele)
-        try { await _originalFetchData.apply(this, args); } catch (_) { /* já tratado internamente */ }
-        // Em paralelo, dispara a rotina
-        fetchRotina().catch(e => console.warn('[Rotina fetch]', e));
-    };
-
-    // Dispara a primeira carga logo após o DOM estar pronto
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchRotina().catch(e => console.warn('[Rotina init]', e));
-        });
-    } else {
-        fetchRotina().catch(e => console.warn('[Rotina init]', e));
-    }
-
-    // Re-verifica alertas a cada 60s (independente do refresh geral de 10min)
-    // — assim, se a rotina falhar entre refreshes, o alerta aparece rápido.
-    setInterval(() => {
-        if (Date.now() >= _rotinaAlertSuppressUntil) {
-            fetchRotina().catch(e => console.warn('[Rotina tick]', e));
-        }
-    }, 60000);
-
-    // Retoma o áudio após a primeira interação do usuário (política dos browsers)
-    const _unlockAudio = () => {
-        const ctx = _ensureAudioCtx();
-        if (ctx && ctx.state === 'suspended') {
-            ctx.resume().catch(() => {});
-        }
-        document.removeEventListener('click', _unlockAudio);
-        document.removeEventListener('keydown', _unlockAudio);
-        document.removeEventListener('touchstart', _unlockAudio);
-    };
-    document.addEventListener('click', _unlockAudio, { once: false });
-    document.addEventListener('keydown', _unlockAudio, { once: false });
-    document.addEventListener('touchstart', _unlockAudio, { once: false });
+  es.onerror = () => {
+  const c = document.getElementById('conn');
+  if(c) c.innerHTML='<i style="width:7px;height:7px;border-radius:50%;background:var(--ba)"></i>reconectando…';
+  try{es.close()}catch(_){}
+  // Fallback: busca uma vez via REST enquanto o SSE não volta
+  run('rotina');
+  run('trib');
+  setTimeout(connectSSE, 5000);
+}};
+connectSSE();
+hydrate();render();all();   // 1) pinta o último snapshot na hora  2) atualiza todas as fontes em paralelo
 })();
-    </script>
-       
+</script>
 </body>
-
 </html>

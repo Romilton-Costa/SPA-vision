@@ -1,13 +1,13 @@
 from mangum import Mangum
 from crawler import SPACrawler
 import os
+import time
 import logging
 import threading
 import re
 import rotina_service
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional
-
 from fastapi import FastAPI, HTTPException, Request, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -17,11 +17,95 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.background import BackgroundScheduler
-from crawler import SPACrawler
 from errbit_service import router as errbit_router
 import collector
 from fastapi import FastAPI
 from collector import get_zabbix_cpu_usage
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+import json
+import asyncio
+import hashlib
+
+_TRIBUNAIS_CACHE = {"data": [], "time": 0}
+_TRIBUNAIS_CACHE_LOCK = threading.Lock()
+TRIBUNAIS_CACHE_TTL = int(os.getenv("TRIBUNAIS_CACHE_TTL_SECONDS", 300))
+
+
+def _load_tribunais_config() -> list:
+    """Lê TRIBUNAIS_CONFIG (JSON) do .env ou, se vazio, de tribunais.json."""
+    raw = (os.getenv("TRIBUNAIS_CONFIG") or "").strip()
+    path = os.getenv("TRIBUNAIS_CONFIG_FILE", "tribunais.json")
+    if not raw and os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            raw = f.read().strip()
+    if not raw:
+        logger.warning("[TRIBUNAIS] TRIBUNAIS_CONFIG vazio ou ausente no .env.")
+        return []
+    try:
+        cfg = json.loads(raw)
+    except Exception as e:
+        logger.error(
+            f"[TRIBUNAIS] JSON invalido em TRIBUNAIS_CONFIG ({e}). Valor lido: {raw[:40]!r}. "
+            "Se o JSON ocupa varias linhas, envolva-o em aspas simples no .env: TRIBUNAIS_CONFIG='[ ... ]'"
+        )
+        return []
+    if isinstance(cfg, dict):
+        cfg = [cfg]
+    if not isinstance(cfg, list):
+        logger.error("[TRIBUNAIS] TRIBUNAIS_CONFIG deve ser uma lista JSON.")
+        return []
+    return [t for t in cfg if isinstance(t, dict)]
+
+def _fetch_tribunais_status_fresh() -> list:
+    tribunais = _load_tribunais_config()
+    resultados = []
+    crawlers_autenticados = {}
+
+    for trib in tribunais:
+        link_teste = ""
+        try:
+            cliente    = trib.get("cliente", "Geral")
+            nome       = trib.get("nome", "Tribunal")
+            target_url = str(trib.get("url", "")).rstrip("/")
+            proc       = trib.get("proc", "")
+            soap_id    = trib.get("id", "")
+            link_teste = f"{target_url}/judicial_processes/{proc}/movements?soap_setting_id={soap_id}"
+
+            if target_url not in crawlers_autenticados:
+                crawler = SPACrawler(base_url=target_url)
+                crawler.authenticate(use_healthcheck_creds=True)
+                crawlers_autenticados[target_url] = crawler
+            else:
+                crawler = crawlers_autenticados[target_url]
+
+            status_code, _ = crawler.test_movements(soap_id=soap_id, proc=proc)
+            resultados.append({
+                "cliente": cliente, "nome": nome,
+                "status": "OK" if status_code == 200 else "ERRO",
+                "code": status_code, "url": link_teste,
+            })
+        except Exception as e:
+            logger.warning(f"[TRIBUNAIS] Falha ao testar {trib!r}: {e}")
+            resultados.append({
+                "cliente": trib.get("cliente", "Geral") if isinstance(trib, dict) else "Geral",
+                "nome":    trib.get("nome", "Tribunal") if isinstance(trib, dict) else str(trib),
+                "status": "ERRO", "code": 0,
+                "error": str(e), "url": link_teste,
+            })
+    return resultados
+
+def _warm_tribunais_cache() -> None:
+    logger.info("[TRIBUNAIS] Verificando status...")
+    try:
+        result = _fetch_tribunais_status_fresh()
+        with _TRIBUNAIS_CACHE_LOCK:
+            _TRIBUNAIS_CACHE["data"] = result
+            _TRIBUNAIS_CACHE["time"] = time.time()
+        logger.info(f"[TRIBUNAIS] Cache atualizado: {len(result)} tribunal(is).")
+    except Exception as e:
+        logger.error(f"[TRIBUNAIS WARM] {e}")
+
+
 
 # ─── LOGGING ────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -50,33 +134,41 @@ def _scheduled_refresh():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Tribunais (background, cache 5min) ──
+    logger.info("[STARTUP] Disparando aquecimento de status dos tribunais...")
+    threading.Thread(target=_warm_tribunais_cache, daemon=True).start()
+    scheduler.add_job(
+        _warm_tribunais_cache, "interval", minutes=5, id="tribunais_refresh_job"
+    )
 
-    # Carga inicial ao subir — expedientes (pode demorar, mas não inclui SSL)
+    # ── Expedientes (bloqueante na 1ª carga) ──
     logger.info("[STARTUP] Pré-carregando dados de expedientes...")
     try:
         collector.collect_all(use_cache=False)
     except Exception as e:
         logger.warning(f"[STARTUP WARN] Falha na carga inicial de expedientes: {e}")
 
-    # SSL aquecido em background (não bloqueia o startup)
-    import threading
+    # ── SSL (background, cache 1h) ──
+    logger.info("[STARTUP] Disparando aquecimento de certificados SSL...")
     threading.Thread(target=collector._warm_ssl_cache, daemon=True).start()
-    logger.info("[STARTUP] Aquecimento de certificados SSL disparado em background.")
-
-    # Agenda recarga de expedientes a cada 15min
-    scheduler.add_job(_scheduled_refresh, "interval", minutes=15, id="refresh_job")
-    # Agenda recarga de SSL a cada 1h (independente)
     scheduler.add_job(collector._warm_ssl_cache, "interval", hours=1, id="ssl_refresh_job")
-    scheduler.start()
-    logger.info("[SCHEDULER] Agendado: expedientes a cada 15min | SSL a cada 1h.")
-    threading.Thread(target=rotina_service.warm_rotina_cache, daemon=True).start()
-    logger.info("[STARTUP] Aquecimento de rotinas disparado em background.")
 
-    # Agenda recarga de rotinas a cada 5min
+    # ── Rotinas (background, cache 5min) ──
+    logger.info("[STARTUP] Disparando aquecimento de rotinas...")
+    threading.Thread(target=rotina_service.collect_rotinas, daemon=True).start()
     scheduler.add_job(
         rotina_service.collect_rotinas,
         "interval", minutes=5, id="rotina_refresh_job",
     )
+
+    # ── Expedientes — refresh periódico ──
+    scheduler.add_job(_scheduled_refresh, "interval", minutes=15, id="refresh_job")
+
+    scheduler.start()
+    logger.info(
+        "[SCHEDULER] Agendado: expedientes/15min | SSL/1h | rotinas/5min | tribunais/5min"
+    )
+
     yield  # app rodando
 
     scheduler.shutdown(wait=False)
@@ -110,31 +202,63 @@ app.add_middleware(
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 app.include_router(errbit_router)
 # No main.py
+@app.get("/api/stream", tags=["infra"])
+async def stream_events(request: Request):
+    loop = asyncio.get_running_loop()
+
+    async def event_gen():
+        last_hash = None
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                rotina = await loop.run_in_executor(None, rotina_service.collect_rotinas)
+                with _TRIBUNAIS_CACHE_LOCK:
+                    trib = list(_TRIBUNAIS_CACHE.get("data") or [])
+                payload = {
+                    "ts": int(time.time() * 1000),
+                    "tribunais": trib,
+                    "rotina": [
+                        {"prefix": r["prefix"], "name": r["name"],
+                         "status": r["status"], "total": r["total"]}
+                        for r in rotina
+                    ],
+                }
+                blob = json.dumps(payload, sort_keys=True)
+                h = hashlib.md5(blob.encode()).hexdigest()
+                if h != last_hash:
+                    last_hash = h
+                    yield f"data: {blob}\n\n"
+                else:
+                    yield ": keepalive\n\n"
+            except Exception as e:
+                logger.warning(f"[SSE] {e}")
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+            await asyncio.sleep(5)
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+@app.get("/api/zabbix/history/{host_name}", tags=["infra"])
+def api_zabbix_history(host_name: str, hours: int = 24):
+    try:
+        cpu = collector.get_zabbix_history(host_name, "system.cpu.util", hours)
+        mem = collector.get_zabbix_history(host_name, "vm.memory.util", hours)
+        return {"host": host_name, "hours": hours, "cpu": cpu, "memory": mem}
+    except Exception as e:
+        logger.error(f"[ZABBIX HISTORY] {host_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/api/status/tribunais")
 def get_tribunais_status():
-    crawler = SPACrawler()
-    # Lista de tribunais para monitorar (pode ser movida para o .env futuramente)
-    tribunais = [
-        {"id": os.getenv("INT_TRT2_ID", "10"), "nome": "TRT5 2 Grau"},
-        
-        # Exemplo de como adicionar outros futuramente:
-        # {"id": "11", "nome": "TRT 15 Grau"},
-    ]
-    
-    resultados = []
-    try:
-        crawler.authenticate()
-        for trib in tribunais:
-            # Reutiliza a lógica do crawler para cada ID
-            status_code, _ = crawler.test_movements(soap_id=trib["id"])
-            resultados.append({
-                "nome": trib["nome"],
-                "status": "OK" if status_code == 200 else "ERRO",
-                "code": status_code
-            })
-        return resultados
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    """Devolve o último resultado do cache (atualizado a cada 5 min pelo scheduler).
+    Não faz login/crawl na requisição: evita 500 e timeout com dezenas de clientes."""
+    with _TRIBUNAIS_CACHE_LOCK:
+        return list(_TRIBUNAIS_CACHE.get("data") or [])
 
 def _validate_date(v: Optional[str]) -> Optional[str]:
     if v is None:
@@ -414,8 +538,6 @@ def get_blank_notices_todos_detalhes(
     except Exception as e:
         logger.error(f"[BLANK ALL DETALHES ERROR] {prefix} → {e}")
         raise HTTPException(status_code=500, detail="Erro ao buscar detalhes dos cadastros em branco")
-
-
 # ─── FORÇAR REFRESH DO CACHE ─────────────────────────────────────────────────
 @app.get("/cache/refresh", response_model=CacheStatus, tags=["infra"])
 @limiter.limit("5/minute")
@@ -433,7 +555,6 @@ def force_refresh(
 
     collector.invalidate_cache()
     # Dispara em background para não bloquear a resposta
-    import threading
     threading.Thread(target=collector.collect_all, kwargs={"use_cache": False}, daemon=True).start()
     return {"message": "Cache invalidado. Recarga em andamento."}
 @app.get("/api/rotina/status", tags=["rotina"])
