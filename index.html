@@ -288,18 +288,17 @@ if (tribs.length) {
     :'<p class="empty">Sem dados de clientes. Veja as fontes com falha acima e tente novamente.</p>';
 
   // ── SSL/Errbit sem cliente associado ──
- /* const o=$('#orf'),no=orf.ssl.length+orf.err.length;
+  const o=$('#orf'),no=orf.ssl.length;
   o.hidden=!no;
-  if(no){o.querySelector('summary').textContent=`Sem cliente associado (${no})`;
-    o.querySelector('ul').innerHTML=orf.ssl.map(x=>`<li>🔒 ${esc(x.host)} · ${esc(x.dias_restantes)}d</li>`).concat(orf.err.map(x=>`<li>🐞 ${esc(x.app_name)}</li>`)).join('')}
-  if(document.body.classList.contains('open')&&tab==='trib')renderTribTab(L);*/
+  if(no){o.open=true;o.querySelector('summary').textContent=`Certificados sem cliente associado (${no})`;
+    o.querySelector('ul').innerHTML=orf.ssl.slice().sort((x,y)=>x.dias_restantes-y.dias_restantes).map(x=>`<li>🔒 ${esc(x.cliente||x.host)} · ${esc(x.host)} · expira em ${esc(x.dias_restantes)} dias</li>`).join('')}
 }
 const skel=()=>Array(12).fill('<div class="card"><div class="ch"><h3><i class="sh" style="width:140px"></i></h3></div><div class="ms"><div class="m"><i class="sh"></i></div><div class="m"><i class="sh"></i></div><div class="m"><i class="sh"></i></div><div class="m"><i class="sh"></i></div></div></div>').join('');
 function card(c){
   const[rl,rc]=ROT[c.rk]||(c.rk?['Verificar','wa']:[null,'']);
   const cpuc=c.cpu==null?'':c.cpu>=85?'ba':c.cpu>=70?'wa':'ok';
   const err=c.pst&&c.pst!=='ok';
-  const chips=(c.minssl!==null?`<span class="chip ${c.minssl<=7?'ba':''}" title="${esc(c.ssl.map(s=>s.host).join(', '))}">🔒Certificado expira em  ${c.minssl} dias</span>`:'')+/*(c.err.length?`<span class="chip">🐞 ${c.err.length} erro(s)</span>`:'')+*/(c.cpu>=85?'<span class="chip ba">CPU alta</span>':'')+(c.tbad?`<span class="chip ba" title="${esc(c.trb.filter(t=>t.status!=='OK').map(t=>t.nome).join(', '))}">⚖ Tribunal com falha</span>`:'')/*+(err?`<span class="chip ba">⚠ ${esc(c.pst)}</span>`:'')*/;
+  const chips=(c.minssl!==null?`<span class="chip ${c.minssl<=7?'ba':''}" title="${esc(c.ssl.map(s=>s.host).join(', '))}">🔒Certificado expira em ${c.minssl} dias${c.ssl.length>1?` (${c.ssl.length} certificados)`:''}</span>`:'')+/*(c.err.length?`<span class="chip">🐞 ${c.err.length} erro(s)</span>`:'')+*/(c.cpu>=85?'<span class="chip ba">CPU alta</span>':'')+(c.tbad?`<span class="chip ba" title="${esc(c.trb.filter(t=>t.status!=='OK').map(t=>t.nome).join(', '))}">⚖ Tribunal com falha</span>`:'')/*+(err?`<span class="chip ba">⚠ ${esc(c.pst)}</span>`:'')*/;
   return`<article class="card s${c.sev}" role="button" tabindex="0" data-p="${esc(c.p)}" aria-label="${esc(c.name)}: abrir detalhes">
 <div class="ch"><h3 title="${esc(c.name)}">${esc(c.name)}</h3>${c.type!=='OUT'?`<span class="tag ${c.type}">${c.type}</span>`:''}</div>
 <div class="ms">${cell(c,'resumo',err?'erro':c.pend!=null?nf(c.pend):null,err?'ba':c.pend?'wa':'ok','Pendentes',1)}
