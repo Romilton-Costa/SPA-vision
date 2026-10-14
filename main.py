@@ -29,6 +29,7 @@ import hashlib
 
 _TRIBUNAIS_CACHE = {"data": [], "time": 0}
 _TRIBUNAIS_CACHE_LOCK = threading.Lock()
+_TRIBUNAIS_WARM_LOCK = threading.Lock()  # evita duas verificações ao mesmo tempo
 TRIBUNAIS_CACHE_TTL = int(os.getenv("TRIBUNAIS_CACHE_TTL_SECONDS", 300))
 
 
@@ -96,6 +97,8 @@ def _fetch_tribunais_status_fresh() -> list:
     return resultados
 
 def _warm_tribunais_cache() -> None:
+    if not _TRIBUNAIS_WARM_LOCK.acquire(blocking=False):
+        return  # já tem uma verificação em andamento
     logger.info("[TRIBUNAIS] Verificando status...")
     try:
         result = _fetch_tribunais_status_fresh()
@@ -105,6 +108,26 @@ def _warm_tribunais_cache() -> None:
         logger.info(f"[TRIBUNAIS] Cache atualizado: {len(result)} tribunal(is).")
     except Exception as e:
         logger.error(f"[TRIBUNAIS WARM] {e}")
+    finally:
+        _TRIBUNAIS_WARM_LOCK.release()
+
+
+def _tribunais_data(wait_s: float = 25) -> list:
+    """Lista de tribunais do cache. Em instância nova (cache vazio, comum no Vercel),
+    faz a verificação na hora em vez de devolver lista vazia."""
+    with _TRIBUNAIS_CACHE_LOCK:
+        data = list(_TRIBUNAIS_CACHE.get("data") or [])
+    if data or not _load_tribunais_config():
+        return data
+    if _TRIBUNAIS_WARM_LOCK.acquire(timeout=wait_s):  # espera a verificação em andamento, se houver
+        _TRIBUNAIS_WARM_LOCK.release()
+        with _TRIBUNAIS_CACHE_LOCK:
+            data = list(_TRIBUNAIS_CACHE.get("data") or [])
+        if not data:
+            _warm_tribunais_cache()
+            with _TRIBUNAIS_CACHE_LOCK:
+                data = list(_TRIBUNAIS_CACHE.get("data") or [])
+    return data
 
 
 
@@ -227,13 +250,14 @@ async def stream_events(request: Request):
                     trib = list(_TRIBUNAIS_CACHE.get("data") or [])
                 payload = {
                     "ts": int(time.time() * 1000),
-                    "tribunais": trib,
                     "rotina": [
                         {"prefix": r["prefix"], "name": r["name"],
                          "status": r["status"], "total": r["total"]}
                         for r in rotina
                     ],
                 }
+                if trib:  # lista vazia = instância ainda verificando; não sobrescreve a da tela
+                    payload["tribunais"] = trib
                 blob = json.dumps(payload, sort_keys=True)
                 h = hashlib.md5(blob.encode()).hexdigest()
                 if h != last_hash:
@@ -266,9 +290,8 @@ def api_zabbix_history(host_name: str, hours: int = 24):
 @app.get("/api/status/tribunais")
 def get_tribunais_status():
     """Devolve o último resultado do cache (atualizado a cada 5 min pelo scheduler).
-    Não faz login/crawl na requisição: evita 500 e timeout com dezenas de clientes."""
-    with _TRIBUNAIS_CACHE_LOCK:
-        return list(_TRIBUNAIS_CACHE.get("data") or [])
+    Só verifica na hora quando o cache ainda está vazio (instância nova)."""
+    return _tribunais_data()
 
 def _validate_date(v: Optional[str]) -> Optional[str]:
     if v is None:

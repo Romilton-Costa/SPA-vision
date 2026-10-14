@@ -247,6 +247,8 @@ td.er{color:var(--bad);font-size:12px}
 .ckp.bad{color:var(--bad);background:var(--bad-soft)}
 .ckp.open{color:var(--wait);background:var(--wait-soft)}
 .ck-na{font-size:11.5px;color:var(--faint)}
+.ckrow.on{background:linear-gradient(90deg,rgba(127,167,255,.12),transparent 85%),var(--bg-2);border:1px solid rgba(127,167,255,.22);border-radius:10px;padding:6px 8px 6px 9px;margin-top:-2px}
+.ckrow.on .ck-l{color:var(--accent);font-size:10px}
 a.ckp{text-decoration:none;cursor:pointer;transition:filter .15s,box-shadow .15s}
 a.ckp:hover{filter:brightness(1.2);box-shadow:inset 0 0 0 1px currentColor}
 a.ckp::after{content:"↗";font-size:10px;opacity:.7;margin-left:-1px}
@@ -504,7 +506,10 @@ const LBL={resumo:'Expedientes não cadastrados',rotina:'Rotinas',blank:'Em bran
 const busy={};
 const gen={};
 async function run(k){const my=gen[k]=(gen[k]||0)+1;busy[k]=1;render();   // cada chamada invalida as anteriores
-  try{const d=await SRC[k].load();if(my!==gen[k])return;if(!Array.isArray(d))throw 0;S[k]=d;S.err[k]=0;S.t[k]=Date.now();save()}
+  try{const d=await SRC[k].load();if(my!==gen[k])return;if(!Array.isArray(d))throw 0;
+    // tribunais: lista vazia = servidor ainda verificando; mantém a última lista boa
+    if(k==='trib'&&!d.length&&(S.trib||[]).length){S.err[k]=0;S.t[k]=Date.now();return}
+    S[k]=d;S.err[k]=0;S.t[k]=Date.now();save()}
   catch(e){if(my!==gen[k])return;S.err[k]=1;S.em[k]=(e&&e.name==='AbortError')?'tempo esgotado':(e&&e.message)||'resposta inválida';if(k==='resumo')toast(LBL[k]+': '+S.em[k],'ba')}
   finally{if(my===gen[k]){busy[k]=0;render()}}}
 const all=()=>Object.keys(SRC).forEach(run);
@@ -634,6 +639,7 @@ const FIL={
 };
 const rotOf=c=>ROT[c.rk]||(c.rk?['Verificar','wa']:[null,'']);
 const ld=k=>S[k]===undefined&&!S.err[k];
+const trbKnown=()=>(S.trib||[]).length>0; // lista vazia = status ainda não disponível (não significa "sem tribunal")
 const val=(k,v)=>v!=null?v:ld(k)?'<i class="sh"></i>':'—';
 function perTxt(){const a=sessionStorage.getItem('spa_inicio'),b=sessionStorage.getItem('spa_fim');
   const f=s=>s?s.split('-').reverse().join('/'):'';
@@ -695,8 +701,8 @@ function paintKpis(L,orf){
       `<b class="c-ba">${rBad}</b> com erro · <b class="c-wa">${rWarn}</b> verificar · ${rAll} rotinas`,
       `<div class="bar"><i style="width:${pc(rOk,rAll)};background:var(--ok)"></i><i style="width:${pc(rWarn,rAll)};background:var(--wait)"></i><i style="width:${pc(rBad,rAll)};background:var(--bad)"></i></div>`)
    +K('blank','Cadastros em branco',val('blank',S.blank?nf(bl):null),bl?'c-wa':'c-ok',`em <b>${cnt(FIL.blank)}</b> ${cnt(FIL.blank)===1?'cliente':'clientes'}`)
-   +K('trib','Tribunais',val('trib',S.trib?tOff:null)+'<small> fora do ar</small>',tOff?'c-ba':'c-ok',
-      `${tAll} integrações · <b>${cnt(FIL.trib)}</b> ${cnt(FIL.trib)===1?'cliente afetado':'clientes afetados'}`,
+   +K('trib','Tribunais',val('trib',trbKnown()?tOff:S.trib?'—':null)+'<small> fora do ar</small>',tOff?'c-ba':'c-ok',
+      !trbKnown()&&S.trib?'status indisponível no momento':`${tAll} integrações · <b>${cnt(FIL.trib)}</b> ${cnt(FIL.trib)===1?'cliente afetado':'clientes afetados'}`,
       `<div class="bar"><i style="width:${pc(tAll-tOff,tAll)};background:var(--ok)"></i><i style="width:${pc(tOff,tAll)};background:var(--bad)"></i></div>`)
    +ckKpi(L,K,pc)
    +K('ssl','Certificados',val('ssl',S.ssl?sAl:null)+`<small> com menos de ${SSL_ALERT} dias</small>`,sAl?'c-ba':'c-ok',`${sNum.length} monitorados${sMin!=null?` · menor prazo <b>${sMin} dias</b>`:''}${sErr?` · <b class="c-wa">${sErr}</b> sem resposta`:''}`));
@@ -766,7 +772,7 @@ function ckRow(c){
   const days=[],end=PB<TD?PB:TD;for(let d=end;days.length<10;d=addD(d,-1))if(!isWE(d))days.unshift(d);
   const strip=days.map(iso=>{const r=k.by.get(iso)||{},m=ckSt(r.M,iso,'M'),t=ckSt(r.T,iso,'T');
     return`<i title="${esc(fmtDM(iso)+' '+WDS[wdOf(iso)]+' · manhã: '+CKL[m].toLowerCase()+' · tarde: '+CKL[t].toLowerCase())}"><b class="${m}"></b><b class="${t}"></b></i>`}).join('');
-  return`<div class="ckrow"><span class="ck-l">Checklist</span>${main}<span class="ck-strip" aria-label="10 dias úteis até ${fmtDM(end)}">${strip}</span></div>`}
+  return`<div class="ckrow on"><span class="ck-l">Checklist</span>${main}<span class="ck-strip" aria-label="10 dias úteis até ${fmtDM(end)}">${strip}</span></div>`}
 function card(c){
   const[rl,rc]=rotOf(c),[h,hl]=SEV[c.sev],[wc,wt]=why(c);
   const err=c.pst&&c.pst!=='ok';
@@ -800,7 +806,7 @@ function tabsHTML(c){
   return b('pend','Expedientes não cadastrados',val('resumo',err?'erro':c.pend!=null?nf(c.pend):null),err?'ba':c.pend?'wa':'ok',perWord())
     +b('rot','Rotina',val('rotina',rl),rc||'mu',c.rtot?`total: ${nf(c.rtot)}`:'status da rotina',1)
     +b('blank','Em branco',val('blank',c.blank!=null?nf(c.blank):null),c.blank?'wa':'ok','cadastros em branco')
-    +b('trib','Tribunais',val('trib',nt?`${nt-c.tbadN}<small>/${nt}</small>`:null),c.tbad?'ba':nt?'ok':'mu',c.tbad?`${c.tbadN} fora do ar`:nt?'todos online':'sem configuração')
+    +b('trib','Tribunais',val('trib',nt?`${nt-c.tbadN}<small>/${nt}</small>`:null),c.tbad?'ba':nt?'ok':'mu',c.tbad?`${c.tbadN} fora do ar`:nt?'todos online':trbKnown()?'sem configuração':'status indisponível')
     +b('ssl','Certificado',val('ssl',c.minssl!=null?`${c.minssl}<small> dias</small>`:c.sslErr?'erro':S.ssl!==undefined?'—':null),c.minssl!=null?sslK(c.minssl):'mu',c.minssl!=null?(c.minssl<SSL_ALERT?'renovar agora':'para renovação'):c.sslErr?'falha na verificação':'URL não monitorada')
     +ckTabBtn(c,b);
 }
@@ -863,6 +869,7 @@ function renderTribTab(L){
     return`<div class="tr${ok?'':' off'}"><i class="dot"></i><b>${esc(t.nome)}</b><span class="st ${ok?'ok':'ba'}">${ok?'Online':'Fora do ar'}</span>
 <span class="tm">HTTP ${esc(t.code??'—')}${t.cliente?' · '+esc(t.cliente):''}</span>${t.error?`<div class="te">${esc(t.error)}</div>`:''}
 ${/^https?:\/\//i.test(t.url||'')?`<a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer">Abrir endpoint de teste ↗</a>`:''}</div>`}).join('')}</div>`
+    :!trbKnown()?'<p class="empty">O status dos tribunais ainda não está disponível (o servidor está fazendo a verificação).<br><button class="btn sm" data-retry="trib">Tentar novamente</button></p>'
     :'<p class="empty">Nenhum tribunal configurado para este cliente.<br><small>Adicione um item com <code>"cliente": "'+esc(c.core)+'"</code> no TRIBUNAIS_CONFIG.</small></p>')}
 let ckView={range:'per',st:'all'};
 function renderChkTab(L){
@@ -1021,6 +1028,8 @@ function paintReport(){
 
 // ── coleta dos dados do período
 async function reportData(progress){
+  progress('Atualizando o status dos tribunais…');
+  const tr=await safe(()=>j('/api/status/tribunais',40000));if(Array.isArray(tr)&&tr.length){S.trib=tr;S.t.trib=Date.now();save();render()}
   const{L}=build();RP.L=L;
   const cl=rpClients().slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
   const a=RP.a,b=RP.b,q=`?dataInicio=${a}&dataFim=${b}`,same=a===perA()&&b===perB(),errs=[];
@@ -1057,172 +1066,236 @@ function reasonRec(m){m=norm(m);
   return'tratar a fila de expedientes junto à equipe do cliente'}
 function insights(R){
   const risks=[];
-  const add=(lv,o,area,desc,imp,acao)=>risks.push({lv,cli:o?o.c.name:'Geral',o,area,desc,imp,acao,resp:o?respOf(o,area):'Coordenação de Suporte',prazo:PRAZO[lv],esc:lv==='A'});
+  const add=(lv,o,area,sh,desc,imp,acao)=>risks.push({lv,cli:o?o.c.name:'Geral',o,area,sh,desc,imp,acao,resp:o?respOf(o,area):'Coordenação de Suporte',prazo:PRAZO[lv],esc:lv==='A'});
   for(const o of R.cl){const c=o.c;
-    if(o.pst&&o.pst!=='ok')add('A',o,'integ','Falha ao consultar os expedientes não cadastrados da instância.','O volume real de pendências do cliente não pode ser medido.','Verificar a conexão da instância com a base (Metabase/SPA) e reprocessar a consulta.');
-    if(c.rbad)add('A',o,'integ',`Rotina de consulta de expedientes: ${rotOf(c)[0]}${c.msg?' ('+c.msg+')':''}.`,'Expedientes dos tribunais deixam de ser importados enquanto a rotina não executa.','Verificar credenciais MNI, agendamento e logs da rotina; reexecutar e acompanhar a próxima janela.');
-    else if(RW.has(c.rk))add('M',o,'integ',`Rotina de consulta requer verificação (${rotOf(c)[0]}).`,'Risco de importação parcial de expedientes.','Conferir a última execução e os alertas da rotina.');
-    if(c.tbad){const nm=c.trb.filter(t=>t.status!=='OK').map(t=>t.nome).join(', ');add('A',o,'integ',`${c.tbadN===1?'1 integração com tribunal fora do ar':c.tbadN+' integrações com tribunais fora do ar'}: ${nm}.`,'Movimentações desses tribunais não são consultadas.','Acionar o suporte do tribunal ou revisar a configuração (soap_setting) e testar novamente.')}
-    if(c.minssl!=null&&c.minssl<SSL_ALERT)add('A',o,'infra',`Certificado SSL vence em ${pl(c.minssl,'dia','dias')} (${c.ssl.filter(sslNum).sort((x,y)=>x.dias_restantes-y.dias_restantes)[0].host}).`,'Ao vencer, o acesso dos usuários ao SPA é bloqueado pelo navegador.','Renovar e instalar o certificado antes do vencimento.');
-    else if(c.sslErr)add('M',o,'infra','Não foi possível verificar o certificado SSL da instância.','Vencimento do certificado sem monitoramento.','Verificar se o endereço responde e se o certificado está instalado corretamente.');
+    if(o.pst&&o.pst!=='ok')add('A',o,'integ','erro na consulta de expedientes','Falha ao consultar os expedientes não cadastrados da instância.','Volume real de pendências não pode ser medido.','Verificar a conexão da instância com a base (Metabase/SPA) e reprocessar.');
+    if(c.rbad)add('A',o,'integ','rotina: '+String(rotOf(c)[0]).toLowerCase(),`Rotina de consulta: ${rotOf(c)[0]}${c.msg?' ('+c.msg+')':''}.`,'Expedientes deixam de ser importados.','Verificar credenciais MNI, agendamento e logs; reexecutar a rotina.');
+    else if(RW.has(c.rk))add('M',o,'integ','rotina para verificar',`Rotina de consulta requer verificação (${rotOf(c)[0]}).`,'Risco de importação parcial.','Conferir a última execução e os alertas da rotina.');
+    if(c.tbad){const nm=c.trb.filter(t=>t.status!=='OK').map(t=>t.nome).join(', ');add('A',o,'integ',c.tbadN===1?'1 tribunal fora do ar':`${c.tbadN} tribunais fora do ar`,`${c.tbadN===1?'Integração fora do ar':'Integrações fora do ar'}: ${nm}.`,'Movimentações desses tribunais não são consultadas.','Acionar o tribunal ou revisar a configuração e testar novamente.')}
+    if(c.minssl!=null&&c.minssl<SSL_ALERT)add('A',o,'infra',`SSL vence em ${pl(c.minssl,'dia','dias')}`,`Certificado SSL vence em ${pl(c.minssl,'dia','dias')} (${c.ssl.filter(sslNum).sort((x,y)=>x.dias_restantes-y.dias_restantes)[0].host}).`,'Acesso ao SPA bloqueado ao vencer.','Renovar e instalar o certificado antes do vencimento.');
+    else if(c.sslErr)add('M',o,'infra','SSL sem resposta','Não foi possível verificar o certificado SSL.','Vencimento sem monitoramento.','Verificar se o endereço responde e o certificado instalado.');
     if(o.pend>0&&!c.pendOff){
       let top=null;if(Array.isArray(o.pendRows)&&o.pendRows.length){const g={};o.pendRows.forEach(r=>{const k=r.failure_message||'Sem motivo informado';g[k]=(g[k]||0)+1});top=Object.entries(g).sort((x,y)=>y[1]-x[1])[0]}
-      const lv=o.pend>=200?'A':o.pend>=50?'M':'B';
       const conc=top&&top[1]/o.pendRows.length>=.4?` ${pct(top[1],o.pendRows.length)}% por "${top[0]}".`:'';
-      add(lv,o,'op',`${pl(o.pend,'expediente não cadastrado','expedientes não cadastrados')} no período.${conc}`,'Expedientes sem cadastro podem gerar perda de prazo processual.',conc?'Prioritariamente, '+reasonRec(top[0])+'.':'Tratar a fila de expedientes não cadastrados junto à equipe do cliente.')}
+      add(o.pend>=200?'A':o.pend>=50?'M':'B',o,'op',pl(o.pend,'expediente não cadastrado','expedientes não cadastrados'),`${pl(o.pend,'expediente não cadastrado','expedientes não cadastrados')}.${conc}`,'Risco de perda de prazo processual.',conc?reasonRec(top[0]).replace(/^./,m=>m.toUpperCase())+'.':'Tratar a fila de expedientes com a equipe do cliente.')}
     if(o.blank>0){let old=0;if(Array.isArray(o.blankRows))old=o.blankRows.filter(r=>r.created_at&&(Date.now()-new Date(r.created_at))/864e5>30).length;
-      add(o.blank>=10?'M':'B',o,'op',`${pl(o.blank,'processo com cadastro em branco','processos com cadastro em branco')}${old?`, ${old} há mais de 30 dias`:''}.`,'Dados incompletos prejudicam distribuição, prazos e relatórios do cliente.','Completar os campos obrigatórios dos processos listados.')}
+      add(o.blank>=10?'M':'B',o,'op',pl(o.blank,'cadastro em branco','cadastros em branco'),`${pl(o.blank,'processo com cadastro em branco','processos com cadastro em branco')}${old?` (${old} há mais de 30 dias)`:''}.`,'Dados incompletos afetam prazos e relatórios.','Completar os campos obrigatórios dos processos.')}
     if(o.ck&&o.ck.exp){const k=o.ck;
-      if(k.bad)add(k.bad>=3?'A':'M',o,'chk',`${pl(k.bad,'checklist não feito','checklists não feitos')} no período (${k.done} de ${k.exp} feitos, ${pct(k.done,k.exp)}%).`,'Falhas de monitoramento diário podem não ser detectadas a tempo.','Executar os checklists pendentes e registrar a solução no chamado.');
-      if(k.late&&k.late/k.exp>=.2)add('M',o,'chk',`${pct(k.late,k.exp)}% dos checklists foram fechados em outro dia (${k.late} de ${k.exp}).`,'Fechamento retroativo indica que a verificação pode não ter ocorrido no turno.','Reforçar a execução e o fechamento do checklist no próprio turno.');
-      if(k.none)add('B',o,'chk',`${pl(k.none,'turno','turnos')} sem chamado de checklist aberto.`,'Turno sem registro de verificação.','Conferir a abertura automática do chamado no GLPI para o cliente.')}
-    if(c.cpu>=85)add('M',o,'infra',`Uso de CPU elevado no momento da geração (${Number(c.cpu).toFixed(0)}%).`,'Risco de lentidão ou indisponibilidade da instância.','Avaliar o consumo do servidor no Zabbix e dimensionar recursos se persistir.');
+      if(k.bad)add(k.bad>=3?'A':'M',o,'chk',pl(k.bad,'checklist não feito','checklists não feitos'),`${pl(k.bad,'checklist não feito','checklists não feitos')} (${k.done} de ${k.exp} feitos).`,'Falhas do dia podem não ser detectadas.','Executar os checklists e registrar a solução no chamado.');
+      if(k.late&&k.late/k.exp>=.2)add('M',o,'chk',`${pct(k.late,k.exp)}% dos checklists com atraso`,`${k.late} de ${k.exp} checklists fechados em outro dia.`,'Verificação pode não ter ocorrido no turno.','Executar e fechar o checklist no próprio turno.');
+      if(k.none)add('B',o,'chk',pl(k.none,'turno sem chamado','turnos sem chamado'),`${pl(k.none,'turno','turnos')} sem chamado de checklist.`,'Turno sem registro de verificação.','Conferir a abertura automática do chamado no GLPI.')}
+    if(c.cpu>=85)add('M',o,'infra',`CPU em ${Number(c.cpu).toFixed(0)}%`,`Uso de CPU elevado (${Number(c.cpu).toFixed(0)}%).`,'Risco de lentidão.','Avaliar o servidor no Zabbix e dimensionar recursos.');
   }
-  // visão consolidada
   const pendT=R.cl.filter(o=>!o.c.pendOff).reduce((s,o)=>s+(o.pend||0),0);
   if(R.cl.length>3&&pendT>0){const top3=R.cl.filter(o=>!o.c.pendOff&&o.pend>0).sort((x,y)=>y.pend-x.pend).slice(0,3),s3=top3.reduce((s,o)=>s+o.pend,0);
-    if(pct(s3,pendT)>=50)add('M',null,'op',`Concentração: ${top3.map(o=>o.c.name).join(', ')} somam ${pct(s3,pendT)}% dos expedientes não cadastrados.`,'O esforço de tratamento está concentrado em poucos clientes.','Priorizar uma força-tarefa nesses clientes.')}
-  const rb=R.cl.filter(o=>o.c.rbad).length;if(rb>=3)add('A',null,'integ',`${rb} clientes com rotina de consulta com erro ao mesmo tempo.`,'Pode indicar falha comum (credenciais, serviço MNI ou infraestrutura).','Investigar causa comum antes de tratar cliente a cliente.');
+    if(pct(s3,pendT)>=50)add('M',null,'op','concentração de expedientes',`${top3.map(o=>o.c.name).join(', ')} somam ${pct(s3,pendT)}% dos expedientes não cadastrados.`,'Esforço concentrado em poucos clientes.','Priorizar uma força-tarefa nesses clientes.')}
+  const rb=R.cl.filter(o=>o.c.rbad).length;if(rb>=3)add('A',null,'integ',`${rb} rotinas com erro`,`${rb} clientes com rotina de consulta com erro ao mesmo tempo.`,'Pode indicar falha comum (credenciais, MNI ou infraestrutura).','Investigar causa comum antes de tratar cliente a cliente.');
   risks.sort((x,y)=>LVO[x.lv]-LVO[y.lv]||x.cli.localeCompare(y.cli,'pt-BR'));
   return risks}
 
-// ── PDF
+// ── PDF (visual: cartões, barras, calendário, matriz colorida)
 async function buildPdf(R,risks){
   const jsPDF=await pdfLibs();
   const doc=new jsPDF({unit:'mm',format:'a4',compress:true});
-  const W=210,H=297,M=16,CW=W-2*M,TOP=M+9,BOT=H-20;
-  const NAVY=[11,42,104],INK=[33,37,46],MUT=[105,113,130],LINE=[214,219,229],SOFT=[244,246,250];
-  const LVC={A:[200,40,48],M:[176,112,0],B:[95,104,122]};
+  const W=210,H=297,M=15,CW=W-2*M,TOP=M+9,BOT=H-17;
+  const NAVY=[11,42,104],INK=[33,37,46],MUT=[112,120,136],LINE=[220,225,234],SOFT=[245,247,251];
+  const C={ok:[24,135,84],wa:[200,126,0],ba:[206,44,52],mu:[146,154,170],ac:[40,92,210]};
+  const T={ok:[225,244,234],wa:[254,242,220],ba:[253,229,230],mu:[239,241,246],ac:[229,237,253]};
+  const LK={A:'ba',M:'wa',B:'mu'};
   const genTxt=R.gen.toLocaleDateString('pt-BR')+' às '+R.gen.toLocaleTimeString('pt-BR');
   const perTxt2=R.a===R.b?fBR(R.a):`${fBR(R.a)} a ${fBR(R.b)}`;
+  const known=trbKnown();
   let y=M;
-  const lh=s=>s*.42;
-  const ensure=h=>{if(y+h>BOT){doc.addPage();y=TOP}};
+  const ensure=h=>{if(y+h>BOT){doc.addPage();y=TOP;return true}return false};
   const font=(s,st='normal',c=INK)=>{doc.setFont('helvetica',st);doc.setFontSize(s);doc.setTextColor(...c)};
-  const para=(t,o={})=>{font(o.size||10,o.bold?'bold':'normal',o.color||INK);const w=o.w||CW,x=o.x||M;const ls=doc.splitTextToSize(String(t),w);
-    for(const l of ls){ensure(lh(o.size||10)+.5);doc.text(l,x,y);y+=lh(o.size||10)}y+=o.after??2.5};
-  const h1=(n,t)=>{ensure(22);y+=4;font(13.5,'bold',NAVY);doc.text(`${n}. ${t}`,M,y);y+=2.2;doc.setDrawColor(...NAVY);doc.setLineWidth(.5);doc.line(M,y,M+CW,y);y+=6};
-  const h2=t=>{ensure(26);y+=2;font(10.5,'bold',INK);doc.text(t,M,y);y+=5};
-  const table=(head,body,o={})=>{doc.autoTable({startY:y,head:[head],body,theme:'grid',margin:{left:M,right:M,top:TOP,bottom:H-BOT},
-      styles:{font:'helvetica',fontSize:o.fs||8.4,cellPadding:1.7,textColor:INK,lineColor:LINE,lineWidth:.15,overflow:'linebreak',valign:'top'},
-      headStyles:{fillColor:NAVY,textColor:255,fontStyle:'bold',fontSize:o.fs||8.4},alternateRowStyles:{fillColor:SOFT},
-      columnStyles:o.cols||{},didParseCell:o.cell||null,rowPageBreak:'avoid'});y=doc.lastAutoTable.finalY+5};
-  const lvCell=col=>d=>{if(d.section==='body'&&d.column.index===col){const k=Object.keys(LV).find(k=>LV[k]===d.cell.raw);if(k){d.cell.styles.textColor=LVC[k];d.cell.styles.fontStyle='bold'}}};
+  const tx=(s,x,yy,size,st,col,opt)=>{font(size,st,col);doc.text(Array.isArray(s)?s:String(s),x,yy,opt||{})};
+  const fit=(s,w,size,st='normal')=>{font(size,st);s=String(s);if(doc.getTextWidth(s)<=w)return s;let t=s;while(t.length>2&&doc.getTextWidth(t+'…')>w)t=t.slice(0,-1);return t.trim()+'…'};
+  const box=(x,yy,w,h,fill,stroke,r=1.8)=>{if(fill)doc.setFillColor(...fill);if(stroke){doc.setDrawColor(...stroke);doc.setLineWidth(.25)}doc.roundedRect(x,yy,w,h,r,r,fill&&stroke?'FD':fill?'F':'S')};
+  const pill=(x,yy,label,k,align='left',size=7)=>{font(size,'bold');const w=doc.getTextWidth(label)+5,xx=align==='right'?x-w:x;box(xx,yy-3.4,w,4.8,T[k],null,2.4);tx(label,xx+2.5,yy,size,'bold',C[k]);return w};
+  const sec=t=>{ensure(22);y+=4;doc.setFillColor(...NAVY);doc.rect(M,y-4.3,1.5,5.8,'F');tx(t,M+4,y,12.5,'bold',NAVY);y+=6.5};
+  const sub=t=>{ensure(16);y+=1;tx(t.toUpperCase(),M,y,7.4,'bold',MUT);y+=3.8};
+  const para=(t,o={})=>{font(o.size||9,o.bold?'bold':'normal',o.color||INK);const ls=doc.splitTextToSize(String(t),o.w||CW);for(const l of ls){ensure(4.2);doc.text(l,o.x||M,y);y+=(o.size||9)*.42}y+=o.after??2};
+  const table=(head,body,o={})=>{doc.autoTable({startY:y,head:[head],body,theme:'plain',margin:{left:M,right:M,top:TOP,bottom:H-BOT},
+      styles:{font:'helvetica',fontSize:o.fs||8,cellPadding:{top:1.6,bottom:1.6,left:2,right:2},textColor:INK,overflow:'linebreak',valign:'middle',lineColor:LINE,lineWidth:{bottom:.15}},
+      headStyles:{fillColor:SOFT,textColor:MUT,fontStyle:'bold',fontSize:(o.fs||8)-.6,lineWidth:{bottom:.3},lineColor:NAVY},
+      columnStyles:o.cols||{},didParseCell:o.cell||null,didDrawCell:o.draw||null,rowPageBreak:'avoid'});y=doc.lastAutoTable.finalY+5};
+  const hbar=(x,yy,w,h,segs)=>{box(x,yy,w,h,T.mu,null,h/2);const tot=segs.reduce((s,[v])=>s+v,0);if(!tot)return;let cx=x;
+    segs.forEach(([v,k])=>{if(!v)return;const sw=w*v/tot;doc.setFillColor(...C[k]);doc.rect(cx,yy,sw,h,'F');cx+=sw})};
+  const tile=(x,yy,w,h,lab,val,note,k,vs=17)=>{box(x,yy,w,h,T[k]);doc.setFillColor(...C[k]);doc.rect(x,yy+2.2,1.3,h-4.4,'F');
+    tx(fit(lab.toUpperCase(),w-7,6.4,'bold'),x+4.2,yy+5,6.4,'bold',MUT);tx(val,x+4.2,yy+h/2+(vs>13?3.4:2.6),vs,'bold',C[k]);if(note)tx(fit(note,w-7,6.8),x+4.2,yy+h-2.9,6.8,'normal',MUT)};
+  const legend=(x,yy,items)=>{let cx=x;items.forEach(([l,k])=>{doc.setFillColor(...C[k]);doc.roundedRect(cx,yy-2.4,2.6,2.6,.5,.5,'F');tx(l,cx+3.6,yy,7,'normal',MUT);font(7);cx+=doc.getTextWidth(l)+9})};
+  // calendário de checklist: colunas = semanas, linhas = seg..sex; metade de cima manhã, de baixo tarde
+  const ckCal=(k,a,b)=>{let w0=a;while(wdOf(w0)!==1)w0=addD(w0,-1);const weeks=[];for(let w=w0;w<=b;w=addD(w,7))weeks.push(w);
+    const cs=4.4,g=1.1,lab=7,need=6*(cs+g)+4;ensure(need);const x0=M+lab;
+    ['S','T','Q','Q','S'].forEach((d,i)=>tx(d,M,y+4+i*(cs+g)+cs*.75,6,'normal',MUT));
+    weeks.forEach((w,j)=>{const x=x0+j*(cs+g);if(Number(w.slice(8,10))<=7||j===0)tx(MES[Number(w.slice(5,7))-1],x,y+1.6,5.6,'normal',MUT);
+      for(let i=0;i<5;i++){const d=addD(w,i);if(d<a||d>b)continue;const r=k.by.get(d)||{},m=ckSt(r.M,d,'M'),t=ckSt(r.T,d,'T');
+        const col=s=>s==='ok'?C.ok:s==='late'||s==='open'?C.wa:s==='bad'?C.ba:s==='none'?[205,210,220]:[236,238,243];
+        const yy=y+4+i*(cs+g);doc.setFillColor(...col(m));doc.rect(x,yy,cs,cs/2-.2,'F');doc.setFillColor(...col(t));doc.rect(x,yy+cs/2+.2,cs,cs/2-.2,'F')}});
+    y+=need};
+  const ckK=o=>!o||!o.exp?'mu':o.bad>=3||pct(o.done,o.exp)<80?'ba':o.bad||o.late||o.none?'wa':'ok';
 
-  // indicadores consolidados
+  // números
   const cl=R.cl,n=cl.length,pendT=cl.filter(o=>!o.c.pendOff).reduce((s,o)=>s+(o.pend||0),0),blankT=cl.reduce((s,o)=>s+(o.blank||0),0);
   const rotOk=cl.filter(o=>o.c.rk==='OK').length,rotBad=cl.filter(o=>o.c.rbad).length,rotW=cl.filter(o=>RW.has(o.c.rk)).length;
   const trbAll=cl.reduce((s,o)=>s+o.c.trb.length,0),trbOff=cl.reduce((s,o)=>s+o.c.tbadN,0);
   const sslAl=cl.filter(o=>o.c.minssl!=null&&o.c.minssl<SSL_ALERT),sslMin=cl.filter(o=>o.c.minssl!=null).map(o=>o.c.minssl);
-  const ckS=k=>cl.reduce((s,o)=>s+(o.ck?o.ck[k]:0),0),ckDone=ckS('done'),ckExp=ckS('exp'),ckBad=ckS('bad'),ckLate=ckS('late'),ckNone=ckS('none');
+  const ckS=k=>cl.reduce((s,o)=>s+(o.ck?o.ck[k]:0),0),ck={done:ckS('done'),exp:ckS('exp'),bad:ckS('bad'),late:ckS('late'),none:ckS('none'),ok:ckS('ok'),open:ckS('open')};
   const nA=risks.filter(r=>r.lv==='A').length,nM=risks.filter(r=>r.lv==='M').length,nB=risks.filter(r=>r.lv==='B').length;
-  const status=nA?['CRÍTICO',LVC.A,'há riscos altos que exigem ação imediata']:nM?['ATENÇÃO',LVC.M,'há pontos de atenção a tratar no curto prazo']:['REGULAR',[30,140,90],'não foram identificados riscos relevantes'];
+  const SK=nA?'ba':nM?'wa':'ok',SL={ba:'CRÍTICO',wa:'ATENÇÃO',ok:'REGULAR'}[SK];
   const escopo=RP.scope==='all'?`Todos os clientes (${n})`:n===1?cl[0].c.name:`Grupo de ${n} clientes`;
-  const cliSit=o=>{const rs=risks.filter(r=>r.o===o);return rs.some(r=>r.lv==='A')?'Crítico':rs.some(r=>r.lv==='M')?'Atenção':rs.length?'Baixo risco':'Em dia'};
+  const cliK=o=>{const rs=risks.filter(r=>r.o===o);return rs.some(r=>r.lv==='A')?'ba':rs.some(r=>r.lv==='M')?'wa':rs.length?'mu':'ok'};
+  const cliL={ba:'Crítico',wa:'Atenção',mu:'Baixo risco',ok:'Em dia'};
+  const ckCli=cl.filter(o=>o.ck&&o.ck.exp);
 
-  // ── capa / cabeçalho
-  try{doc.addImage(PDF_LOGO,'PNG',M,y,44,11.9)}catch(_){}
-  font(7.5,'bold',MUT);doc.text('RELATÓRIO DE MONITORAMENTO',W-M,y+4,{align:'right'});font(7.5,'normal',MUT);doc.text('Coreplan · Customer Success',W-M,y+8,{align:'right'});
-  y+=20;font(18,'bold',NAVY);doc.text('Relatório de Monitoramento dos Clientes',M,y);y+=6.5;
-  font(10,'normal',MUT);doc.text('Expedientes, rotinas de consulta, cadastros, tribunais, certificados e checklists',M,y);y+=7;
-  const meta=[['Período analisado',`${perTxt2} (${pl(busDays(R.a,R.b),'dia útil','dias úteis')})`],['Abrangência',escopo],['Gerado em',genTxt],['Status geral',status[0]]];
-  const boxH=meta.length*6+5;doc.setFillColor(...SOFT);doc.setDrawColor(...LINE);doc.roundedRect(M,y,CW,boxH,1.5,1.5,'FD');
-  let yy=y+6.5;for(const[k,v]of meta){font(9,'bold',MUT);doc.text(k,M+4,yy);font(9,k==='Status geral'?'bold':'normal',k==='Status geral'?status[1]:INK);doc.text(doc.splitTextToSize(v,CW-50)[0],M+44,yy);yy+=6}
-  y+=boxH+4;
-  if(n>1&&n<=12){font(8,'normal',MUT);para('Clientes: '+cl.map(o=>o.c.name).join(', ')+'.',{size:8,color:MUT,after:2})}
-  if(R.errs.length)para('Atenção: algumas fontes não responderam durante a geração ('+R.errs.join('; ')+'). Os números dessas fontes podem estar incompletos.',{size:8.5,color:LVC.A});
+  // ── página 1: cabeçalho, status, cartões, destaques
+  try{doc.addImage(PDF_LOGO,'PNG',M,y,40,10.8)}catch(_){}
+  tx('RELATÓRIO DE MONITORAMENTO',W-M,y+3.6,7.4,'bold',NAVY,{align:'right'});tx('Gerado em '+genTxt,W-M,y+7.8,7.4,'normal',MUT,{align:'right'});
+  y+=19;tx('Relatório de Monitoramento',M,y,19,'bold',NAVY);y+=6;
+  tx(`${escopo}  ·  ${perTxt2}  ·  ${pl(busDays(R.a,R.b),'dia útil','dias úteis')}`,M,y,9.5,'normal',MUT);y+=6;
+  // faixa de status
+  box(M,y,CW,15,T[SK]);doc.setFillColor(...C[SK]);doc.rect(M,y+2.5,1.5,10,'F');
+  tx('STATUS GERAL',M+5,y+5.4,6.8,'bold',MUT);tx(SL,M+5,y+11.6,15,'bold',C[SK]);
+  tx(nA?'Há riscos altos que exigem ação imediata.':nM?'Há pontos de atenção para o curto prazo.':'Sem riscos relevantes no período.',M+40,y+9.4,9,'normal',INK);
+  let px=W-M-4;[['B',nB,'baixo'],['M',nM,'médio'],['A',nA,'alto']].forEach(([k,v,l])=>{px-=pill(px,y+9.2,`${v} ${l}`,LK[k],'right',7.4)+2});
+  y+=20;
+  // cartões
+  const tw=(CW-8)/3,th=22,topP=cl.filter(o=>!o.c.pendOff&&o.pend>0).sort((a,b)=>b.pend-a.pend);
+  const tiles=[
+    ['Expedientes não cadastrados',nf(pendT),topP.length&&n>1?`maior: ${topP[0].c.name} (${nf(topP[0].pend)})`:'no período',pendT>=200?'ba':pendT?'wa':'ok'],
+    ['Cadastros em branco',nf(blankT),`em ${pl(cl.filter(o=>o.blank>0).length,'cliente','clientes')}`,blankT?'wa':'ok'],
+    ['Checklists feitos',ck.exp?pct(ck.done,ck.exp)+'%':'—',ck.exp?`${ck.done} de ${ck.exp} · ${pl(ck.bad,'não feito','não feitos')}`:'sem checklist no período',ckK(ck)],
+    ['Rotinas com erro',String(rotBad),`${rotW} p/ verificar · ${rotOk} em dia`,rotBad?'ba':rotW?'wa':'ok'],
+    ['Tribunais fora do ar',known?String(trbOff):'—',known?(trbAll?`${trbAll-trbOff} de ${trbAll} online`:'nenhum configurado'):'status indisponível',!known?'mu':trbOff?'ba':'ok'],
+    [`Certificados < ${SSL_ALERT} dias`,String(sslAl.length),sslMin.length?`menor prazo: ${Math.min(...sslMin)} dias`:'—',sslAl.length?'ba':'ok']];
+  tiles.forEach((t,i)=>tile(M+(i%3)*(tw+4),y+Math.floor(i/3)*(th+4),tw,th,...t));
+  y+=2*th+4+8;
+  // destaques (resumo executivo enxuto)
+  sub('Resumo executivo');
+  const alto=risks.filter(r=>r.lv==='A'&&r.o);
+  const worst=ckCli.slice().sort((a,b)=>pct(a.ck.done,a.ck.exp)-pct(b.ck.done,b.ck.exp))[0];
+  const bl=[
+    [SK,`${n===1?cl[0].c.name:n+' clientes'} avaliados: ${nA} risco${nA===1?'':'s'} alto${nA===1?'':'s'}, ${nM} médio${nM===1?'':'s'} e ${nB} baixo${nB===1?'':'s'}.`],
+    alto.length?['ba','Prioridades: '+alto.slice(0,4).map(r=>`${r.cli} (${r.sh})`).join('; ')+(alto.length>4?` e mais ${alto.length-4}.`:'.')]:null,
+    ck.exp?[ckK(ck),`Checklists: ${pct(ck.done,ck.exp)}% feitos (${ck.done}/${ck.exp})${ck.late?`, ${ck.late} com atraso`:''}${worst&&n>1&&pct(worst.ck.done,worst.ck.exp)<100?`; menor índice: ${worst.c.name} (${pct(worst.ck.done,worst.ck.exp)}%)`:''}.`]:null,
+    pendT?[pendT>=200?'ba':'wa',`Expedientes não cadastrados: ${nf(pendT)}${topP.length&&n>1?` — maior volume em ${topP.slice(0,3).map(o=>o.c.name).join(', ')}`:''}.`]:['ok','Nenhum expediente não cadastrado no período.'],
+  ].filter(Boolean);
+  for(const[k,t]of bl){font(9);const ls=doc.splitTextToSize(t,CW-6);ensure(ls.length*4+1.5);doc.setFillColor(...C[k]);doc.roundedRect(M,y-2.6,2.2,2.2,.4,.4,'F');tx(ls,M+5,y,9,'normal',INK);y+=ls.length*3.9+1.6}
+  if(R.errs.length){y+=1;para('Fontes indisponíveis na geração: '+R.errs.join('; ')+'. Números dessas fontes podem estar incompletos.',{size:7.8,color:C.ba})}
 
-  // ── 1. resumo executivo
-  let sec=0;h1(++sec,'Resumo executivo');
-  const topP=cl.filter(o=>!o.c.pendOff&&o.pend>0).sort((x,y)=>y.pend-x.pend).slice(0,3);
-  const frases=[
-    `Este relatório consolida a situação de ${n===1?'1 cliente ('+cl[0].c.name+')':n+' clientes'} no período de ${perTxt2}. O status geral é ${status[0]}: ${status[2]}.`,
-    `Foram identificados ${pl(pendT,'expediente não cadastrado','expedientes não cadastrados')}${topP.length&&n>1?`, com maior volume em ${topP.map(o=>`${o.c.name} (${nf(o.pend)})`).join(', ')}`:''}, e ${pl(blankT,'processo com cadastro em branco','processos com cadastro em branco')}.`,
-    `Rotinas de consulta: ${rotBad?`${rotBad} com erro`:'nenhuma com erro'}${rotW?` e ${rotW} para verificação`:''}${rotOk?`; ${rotOk} em dia`:''}. Integrações com tribunais: ${trbAll?`${trbAll-trbOff} de ${trbAll} online${trbOff?` (${trbOff} fora do ar)`:''}`:'sem integrações configuradas'}.`,
-    ckExp?`Checklists: ${ckDone} de ${ckExp} feitos (${pct(ckDone,ckExp)}%)${ckBad?`, ${pl(ckBad,'não feito','não feitos')}`:''}${ckLate?`, ${pl(ckLate,'fechado em outro dia','fechados em outro dia')}`:''}${ckNone?`, ${pl(ckNone,'turno sem chamado','turnos sem chamado')}`:''}.`:'Checklists: não há checklists previstos no período para os clientes selecionados.',
-    `Certificados SSL: ${sslAl.length?`${sslAl.length} com vencimento em menos de ${SSL_ALERT} dias (${sslAl.map(o=>`${o.c.name}: ${o.c.minssl} dias`).join(', ')})`:`nenhum com vencimento em menos de ${SSL_ALERT} dias`}${sslMin.length?`; menor prazo: ${Math.min(...sslMin)} dias`:''}.`,
-    `Foram levantados ${pl(risks.length,'ponto de atenção','pontos de atenção')}: ${nA} de risco alto, ${nM} médio e ${nB} baixo${nA?', com escalonamento recomendado para os de risco alto':''}.`];
-  for(const f of frases)para(f,{after:1.8});y+=1;
-  // ── 2. indicadores
-  h1(++sec,'Indicadores');
-  const sit=(bad,warn)=>bad?'Crítico':warn?'Atenção':'Em dia';
-  table(['Indicador','Resultado','Situação'],[
-    ['Expedientes não cadastrados no período',nf(pendT)+(cl.some(o=>o.c.pendOff)?' (CNI não entra na conta)':''),sit(0,pendT>0)],
-    ['Cadastros em branco',nf(blankT),sit(0,blankT>0)],
-    ['Rotinas de consulta com erro',`${rotBad} de ${rotOk+rotBad+rotW}`,sit(rotBad,rotW)],
-    ['Integrações com tribunais fora do ar',trbAll?`${trbOff} de ${trbAll}`:'—',sit(trbOff,0)],
-    ['Checklists feitos',ckExp?`${ckDone} de ${ckExp} (${pct(ckDone,ckExp)}%)`:'—',!ckExp?'—':ckBad>=3||pct(ckDone,ckExp)<80?'Crítico':ckBad||ckLate||ckNone?'Atenção':'Em dia'],
-    ['Checklists fechados com atraso',ckExp?`${ckLate} (${pct(ckLate,ckExp)}%)`:'—',sit(0,ckLate)],
-    [`Certificados com menos de ${SSL_ALERT} dias`,String(sslAl.length),sit(sslAl.length,0)],
-    ['Pontos de risco alto / médio / baixo',`${nA} alto · ${nM} médio · ${nB} baixo`,sit(nA,nM)],
-  ],{cols:{0:{cellWidth:78},1:{cellWidth:60},2:{fontStyle:'bold'}},cell:d=>{if(d.section==='body'&&d.column.index===2){d.cell.styles.textColor=d.cell.raw==='Crítico'?LVC.A:d.cell.raw==='Atenção'?LVC.M:[30,140,90]}}});
-  // ── 3. riscos
-  if(RP.opt.risk){h1(++sec,'Riscos e pontos de atenção');
-    if(!risks.length)para('Nenhum ponto de atenção identificado no período para os clientes selecionados.');
-    else table(['Nível','Cliente','Descrição','Impacto','Plano de ação'],risks.map(r=>[LV[r.lv],r.cli,r.desc,r.imp,r.acao]),
-      {fs:7.8,cols:{0:{cellWidth:13},1:{cellWidth:28},2:{cellWidth:50},3:{cellWidth:38}},cell:lvCell(0)});
-    // ── 4. pendências
-    h1(++sec,'Pendências e próximos passos');
-    const pend=risks.filter(r=>r.lv!=='B'||risks.length<=25);
-    if(!pend.length)para('Não há pendências abertas.');
-    else{para('Ações sugeridas a partir dos riscos acima. Responsáveis e prazos são sugestões e devem ser confirmados pela coordenação.',{size:8.8,color:MUT});
-      table(['Ação','Cliente','Responsável sugerido','Prazo','Status','Escalonar'],pend.map(r=>[r.acao,r.cli,r.resp,r.prazo,'Aberta',r.esc?'Sim':'Não']),
-        {fs:7.8,cols:{0:{cellWidth:62},1:{cellWidth:28},2:{cellWidth:34},3:{cellWidth:22},4:{cellWidth:12}},cell:d=>{if(d.section==='body'&&d.column.index===5&&d.cell.raw==='Sim'){d.cell.styles.textColor=LVC.A;d.cell.styles.fontStyle='bold'}}})}}
-  // ── 5. visão geral por cliente
-  if(RP.opt.overview&&n>1){h1(++sec,'Visão geral por cliente');
-    table(['Cliente','Situação','Exped. não cad.','Em branco','Rotina','Tribunais','SSL (dias)','Checklist','CPU'],
-      cl.map(o=>{const c=o.c;return[c.name,cliSit(o),c.pendOff?`${o.pend??'—'} *`:o.pend??'—',o.blank??'—',rotOf(c)[0]||'—',c.trb.length?`${c.trb.length-c.tbadN}/${c.trb.length} online`:'—',c.minssl??(c.sslErr?'sem resposta':'—'),o.ck&&o.ck.exp?`${o.ck.done}/${o.ck.exp}`:'—',c.cpu!=null?Number(c.cpu).toFixed(0)+'%':'—']}),
-      {fs:7.6,cols:{0:{cellWidth:38},1:{cellWidth:18,fontStyle:'bold'}},cell:d=>{if(d.section==='body'&&d.column.index===1){d.cell.styles.textColor=d.cell.raw==='Crítico'?LVC.A:d.cell.raw==='Atenção'?LVC.M:d.cell.raw==='Em dia'?[30,140,90]:MUT}}});
-    if(cl.some(o=>o.c.pendOff))para('* CNI não entra na conta de expedientes não cadastrados.',{size:7.5,color:MUT})}
-  // ── 6. detalhamento
-  if(RP.opt.detail){h1(++sec,'Detalhamento por cliente');
+  // ── checklists (destaque)
+  if(ckCli.length){sec('Checklists');
+    legend(M,y,[['Feito no dia','ok'],['Feito com atraso','wa'],['Não feito','ba'],['Sem chamado','mu']]);y+=5;
+    if(n===1){const o=cl[0];box(M,y,CW,16,SOFT);tx(`${pct(o.ck.done,o.ck.exp)}%`,M+4,y+10.5,18,'bold',C[ckK(o.ck)]);
+      tx(`${o.ck.done} de ${o.ck.exp} feitos`,M+30,y+6.4,8.5,'bold',INK);hbar(M+30,y+9,CW-34,3.4,[[o.ck.ok,'ok'],[o.ck.late+o.ck.open,'wa'],[o.ck.bad,'ba'],[o.ck.none,'mu']]);y+=21;
+      if(o.c.ck.escala)tx(`Escala: manhã ${o.c.ck.escala.manha} · tarde ${o.c.ck.escala.tarde}`,M,y,8,'normal',MUT),y+=5;
+      ckCal(o.c.ck,R.a,R.b)}
+    else{const rows=ckCli.slice().sort((a,b)=>a.ck.done/a.ck.exp-b.ck.done/b.ck.exp||a.ck.ok/a.ck.exp-b.ck.ok/b.ck.exp||a.c.name.localeCompare(b.c.name,'pt-BR'));
+      const xb=M+52,wb=78;tx('CLIENTE',M,y,6.6,'bold',MUT);tx('FEITOS',M+134,y,6.6,'bold',MUT);tx('OCORRÊNCIAS',M+152,y,6.6,'bold',MUT);y+=2.5;
+      rows.forEach(o=>{ensure(7);const k=o.ck,kk=ckK(k);y+=4.6;
+        tx(fit(o.c.name,48,8.2),M,y,8.2,'normal',INK);hbar(xb,y-2.6,wb,3.2,[[k.ok,'ok'],[k.late+k.open,'wa'],[k.bad,'ba'],[k.none,'mu']]);
+        tx(`${pct(k.done,k.exp)}%`,M+134,y,8.4,'bold',C[kk]);tx(`${k.done}/${k.exp}`,M+144,y,7,'normal',MUT,{});
+        const oc=[k.bad?`${k.bad} não feito${k.bad>1?'s':''}`:'',k.late?`${k.late} atraso${k.late>1?'s':''}`:'',k.none?`${k.none} sem chamado`:''].filter(Boolean).join(' · ')||'—';
+        tx(fit(oc,CW-152,7),M+152+5,y,7,'normal',k.bad?C.ba:MUT);
+        doc.setDrawColor(...LINE);doc.setLineWidth(.12);doc.line(M,y+1.8,W-M,y+1.8)});
+      y+=6;const sem=cl.filter(o=>!(o.ck&&o.ck.exp));if(sem.length)para('Sem checklist monitorado: '+sem.map(o=>o.c.name).join(', ')+'.',{size:7.4,color:MUT})}}
+
+  // ── expedientes por cliente (gráfico)
+  if(n>1&&topP.length){sec('Expedientes não cadastrados por cliente');
+    const top=topP.slice(0,12),mx=top[0].pend;
+    top.forEach(o=>{ensure(6.5);y+=4.6;tx(fit(o.c.name,48,8.2),M,y,8.2,'normal',INK);const w=Math.max(1.2,(CW-72)*o.pend/mx);
+      doc.setFillColor(...C[o.pend>=200?'ba':o.pend>=50?'wa':'ac']);doc.roundedRect(M+52,y-2.8,w,3.4,.8,.8,'F');tx(nf(o.pend),M+54+w,y,7.8,'bold',INK)});
+    y+=4;if(topP.length>12)para(`Mostrando os 12 maiores de ${topP.length} clientes com expedientes.`,{size:7.4,color:MUT})}
+
+  // ── riscos
+  if(RP.opt.risk){sec('Riscos e pontos de atenção');
+    if(!risks.length)para('Nenhum ponto de atenção identificado no período.');
+    else{const show=risks.filter(r=>r.lv!=='B'||n<=15);
+      table(['Nível','Cliente','Ponto de atenção','Plano de ação'],show.map(r=>[LV[r.lv],r.cli,r.desc,r.acao]),
+        {fs:7.7,cols:{0:{cellWidth:15,fontStyle:'bold',halign:'center'},1:{cellWidth:32,fontStyle:'bold'},2:{cellWidth:68}},
+         cell:d=>{if(d.section==='body'&&d.column.index===0){const k=LK[Object.keys(LV).find(x=>LV[x]===d.cell.raw)];d.cell.styles.fillColor=T[k];d.cell.styles.textColor=C[k]}}});
+      if(show.length<risks.length)para(`${risks.length-show.length} pontos de risco baixo omitidos (aparecem no detalhamento de cada cliente).`,{size:7.4,color:MUT})}
+    const pend=risks.filter(r=>r.lv!=='B');
+    if(pend.length){sec('Pendências e próximos passos');
+      table(['Ação','Cliente','Responsável sugerido','Prazo','Escalonar'],pend.map(r=>[r.acao,r.cli,r.resp,r.prazo,r.esc?'Sim':'Não']),
+        {fs:7.6,cols:{0:{cellWidth:66},1:{cellWidth:30},2:{cellWidth:38},3:{cellWidth:24},4:{halign:'center'}},
+         cell:d=>{if(d.section==='body'&&d.column.index===4&&d.cell.raw==='Sim'){d.cell.styles.textColor=C.ba;d.cell.styles.fontStyle='bold'}}});
+      para('Responsáveis e prazos são sugestões e devem ser confirmados pela coordenação.',{size:7.2,color:MUT})}}
+
+  // ── matriz por cliente
+  if(RP.opt.overview&&n>1){sec('Visão geral por cliente');
+    legend(M,y,[['Em dia','ok'],['Atenção','wa'],['Crítico','ba'],['Sem dado','mu']]);y+=4;
+    const K=[];
+    const body=cl.map(o=>{const c=o.c,k=o.ck;
+      const r=[[c.name,null],[cliL[cliK(o)],cliK(o)],
+        [c.pendOff?'fora':o.pst&&o.pst!=='ok'?'erro':o.pend??'—',c.pendOff||o.pend==null?'mu':o.pst&&o.pst!=='ok'?'ba':o.pend>=200?'ba':o.pend>0?'wa':'ok'],
+        [o.blank??'—',o.blank==null?'mu':o.blank>0?'wa':'ok'],
+        [rotOf(c)[0]||'—',c.rbad?'ba':RW.has(c.rk)?'wa':c.rk==='OK'?'ok':'mu'],
+        [c.trb.length?`${c.trb.length-c.tbadN}/${c.trb.length}`:known?'—':'?',c.tbad?'ba':c.trb.length?'ok':'mu'],
+        [c.minssl!=null?c.minssl+'d':c.sslErr?'erro':'—',c.minssl!=null?(c.minssl<SSL_ALERT?'ba':'ok'):c.sslErr?'wa':'mu'],
+        [k&&k.exp?`${pct(k.done,k.exp)}%`:'—',ckK(k)]];
+      K.push(r.map(x=>x[1]));return r.map(x=>String(x[0]))});
+    table(['Cliente','Situação','Exped.','Em branco','Rotina','Tribunais','SSL','Checklist'],body,
+      {fs:7.5,cols:{0:{cellWidth:42,fontStyle:'bold'},1:{cellWidth:22},2:{halign:'center'},3:{halign:'center'},4:{halign:'center'},5:{halign:'center'},6:{halign:'center'},7:{halign:'center'}},
+       cell:d=>{if(d.section==='body'&&d.column.index>0){const k=K[d.row.index][d.column.index];if(k){d.cell.styles.fillColor=T[k];d.cell.styles.textColor=C[k];d.cell.styles.fontStyle='bold'}}}});
+    if(cl.some(o=>o.c.pendOff))para('"fora" = cliente que não entra na conta de expedientes não cadastrados (CNI).',{size:7,color:MUT})}
+
+  // ── detalhamento por cliente
+  if(RP.opt.detail){ensure(80);sec('Detalhamento por cliente');
     const compact=n>REPORT_DETAIL_MAX,days=RP.opt.chkdays&&!compact;
-    if(compact)para(`Com mais de ${REPORT_DETAIL_MAX} clientes, o detalhamento traz os indicadores e os pontos de atenção de cada cliente, sem listas de processos e sem o checklist dia a dia. Para esses detalhes, gere o relatório de um cliente ou de um grupo menor.`,{size:8.8,color:MUT});
-    cl.forEach((o,i)=>{const c=o.c;
-      if(i>0&&!compact&&(R.lists||days))doc.addPage(),y=TOP;else ensure(48);
-      font(12,'bold',NAVY);doc.text(`${sec}.${i+1} ${c.name}`,M,y);font(9,'bold',cliSit(o)==='Crítico'?LVC.A:cliSit(o)==='Atenção'?LVC.M:[30,140,90]);doc.text(cliSit(o).toUpperCase(),W-M,y,{align:'right'});y+=6;
-      table(['Indicador','Valor','Indicador','Valor'],[
-        ['Expedientes não cadastrados',c.pendOff?`${o.pend??'—'} (fora da conta)`:o.pst&&o.pst!=='ok'?'erro na consulta':String(o.pend??'—'),'Rotina de consulta',(rotOf(c)[0]||'—')+(c.rtot?` (${c.rtot})`:'')],
-        ['Cadastros em branco',String(o.blank??'—'),'Tribunais',c.trb.length?`${c.trb.length-c.tbadN} de ${c.trb.length} online`:'sem configuração'],
-        ['Certificado SSL',c.minssl!=null?`${c.minssl} dias para renovação`:c.sslErr?'sem resposta':'não monitorado','CPU (agora)',c.cpu!=null?Number(c.cpu).toFixed(0)+'%':'—'],
-        ['Checklists no período',o.ck&&o.ck.exp?`${o.ck.done} de ${o.ck.exp} feitos (${pct(o.ck.done,o.ck.exp)}%)`:'—','Escala',c.ck&&c.ck.escala?`manhã ${c.ck.escala.manha} · tarde ${c.ck.escala.tarde}`:'—']],
-        {fs:8,cols:{0:{fontStyle:'bold',cellWidth:42},2:{fontStyle:'bold',cellWidth:34}}});
+    if(compact)para(`Com mais de ${REPORT_DETAIL_MAX} clientes, o detalhamento mostra indicadores e pontos de atenção. Para listas e calendário, gere o relatório de um grupo menor.`,{size:7.8,color:MUT});
+    cl.forEach((o,i)=>{const c=o.c,ck2=o.ck,kk=cliK(o);
+      if(i>0&&!compact&&(R.lists||days)){doc.addPage();y=TOP}else ensure(compact?40:55);
+      box(M,y,CW,10,SOFT);doc.setFillColor(...C[kk]);doc.rect(M,y,1.5,10,'F');tx(fit(c.name,CW-50,11,'bold'),M+5,y+6.8,11,'bold',NAVY);pill(W-M-3,y+6.4,cliL[kk].toUpperCase(),kk,'right',7);y+=13;
+      const tw2=(CW-5*2.6)/6,th2=17,sv=12.5;
+      [['Expedientes',c.pendOff?String(o.pend??'—'):o.pst&&o.pst!=='ok'?'erro':String(o.pend??'—'),c.pendOff?'fora da conta':'não cadastrados',c.pendOff||o.pend==null?'mu':o.pst&&o.pst!=='ok'?'ba':o.pend>=200?'ba':o.pend>0?'wa':'ok'],
+       ['Em branco',String(o.blank??'—'),'cadastros',o.blank==null?'mu':o.blank>0?'wa':'ok'],
+       ['Rotina',fit(rotOf(c)[0]||'—',tw2-7,10,'bold'),c.rtot?`${c.rtot} rotinas`:'consulta MNI',c.rbad?'ba':RW.has(c.rk)?'wa':c.rk==='OK'?'ok':'mu'],
+       ['Tribunais',c.trb.length?`${c.trb.length-c.tbadN}/${c.trb.length}`:'—',c.trb.length?(c.tbad?`${c.tbadN} fora do ar`:'todos online'):known?'sem configuração':'indisponível',c.tbad?'ba':c.trb.length?'ok':'mu'],
+       ['Certificado',c.minssl!=null?c.minssl+'d':c.sslErr?'erro':'—',c.minssl!=null?'para renovação':c.sslErr?'sem resposta':'não monitorado',c.minssl!=null?(c.minssl<SSL_ALERT?'ba':'ok'):c.sslErr?'wa':'mu'],
+       ['Checklist',ck2&&ck2.exp?pct(ck2.done,ck2.exp)+'%':'—',ck2&&ck2.exp?`${ck2.done} de ${ck2.exp} feitos`:'não monitorado',ckK(ck2)]]
+       .forEach((t,j)=>tile(M+j*(tw2+2.6),y,tw2,th2,t[0],t[1],t[2],t[3],t[1].length>5?10:sv));
+      y+=th2+4;
       const rs=risks.filter(r=>r.o===o);
-      if(rs.length){h2('Pontos de atenção');table(['Nível','Descrição','Plano de ação'],rs.map(r=>[LV[r.lv],r.desc,r.acao]),{fs:7.8,cols:{0:{cellWidth:14},1:{cellWidth:80}},cell:lvCell(0)})}
-      if(Array.isArray(o.pendRows)&&o.pendRows.length){h2(`Expedientes não cadastrados (${o.pendRows.length})`);
-        const g={};o.pendRows.forEach(r=>{const k=r.failure_message||'Sem motivo informado';g[k]=(g[k]||0)+1});
-        table(['Motivo da falha','Qtde','%'],Object.entries(g).sort((x,y)=>y[1]-x[1]).map(([k,v])=>[k,v,pct(v,o.pendRows.length)+'%']),{fs:7.8,cols:{1:{cellWidth:16,halign:'right'},2:{cellWidth:14,halign:'right'}}});
-        const lim=200,rows=o.pendRows.slice(0,lim);
-        table(['Processo','Motivo','Disponibilizado em'],rows.map(r=>[r.judicial_process_number||'—',r.failure_message||'—',fDT(r.available_at||r.created_at)]),{fs:7.4,cols:{0:{cellWidth:48},2:{cellWidth:32}}});
-        if(o.pendRows.length>lim)para(`Mostrando ${lim} de ${o.pendRows.length} expedientes.`,{size:7.5,color:MUT})}
-      else if(o.pendRows&&o.pendRows.err)para('Lista de expedientes indisponível: '+o.pendRows.err+'.',{size:8,color:MUT});
-      if(Array.isArray(o.rotRows)&&o.rotRows.length){h2('Rotinas de consulta');
-        table(['Descrição','Status','Último início','Última conclusão','Último processamento'],o.rotRows.map(r=>[r.description||'—',(ROT[String(r.status_rotina||'').toUpperCase()]||[r.status_rotina||'—'])[0],fDT(r.last_start),fDT(r.last_finished),r.last_processing||'—']),{fs:7.4,cols:{0:{cellWidth:52}}})}
-      if(Array.isArray(o.blankRows)&&o.blankRows.length){h2(`Cadastros em branco (${o.blankRows.length})`);
+      if(rs.length){table(['Nível','Ponto de atenção','Plano de ação'],rs.map(r=>[LV[r.lv],r.desc,r.acao]),{fs:7.5,cols:{0:{cellWidth:15,fontStyle:'bold',halign:'center'},1:{cellWidth:86}},
+        cell:d=>{if(d.section==='body'&&d.column.index===0){const k=LK[Object.keys(LV).find(x=>LV[x]===d.cell.raw)];d.cell.styles.fillColor=T[k];d.cell.styles.textColor=C[k]}}})}
+      else{tx('Sem pontos de atenção no período.',M,y,8,'normal',C.ok);y+=6}
+      if(compact)return;
+      if(days&&ck2&&ck2.it.length&&c.ck){sub('Checklists no período');if(n>1){legend(M,y,[['Feito no dia','ok'],['Com atraso','wa'],['Não feito','ba'],['Sem chamado','mu']]);y+=2;ckCal(c.ck,R.a,R.b)}
+        const prob=ck2.it.filter(x=>['bad','late','none','open'].includes(x.st));
+        if(prob.length){table(['Dia','Turno','Situação','Chamado','Técnico / solução'],prob.slice().reverse().map(x=>[`${fmtDM(x.iso)} ${WDS[wdOf(x.iso)]}`,SHN[x.sh],CKL[x.st],x.rec?'#'+x.rec.id:'—',[x.rec&&x.rec.tecnico,x.rec&&x.rec.feito?'solução '+fmtSol(x.rec.solucao,x.iso):''].filter(Boolean).join(' · ')||(escOf(c.ck,x.sh)?'escala: '+escOf(c.ck,x.sh):'—')]),
+          {fs:7.2,cols:{0:{cellWidth:20},1:{cellWidth:16},2:{cellWidth:30,fontStyle:'bold'},3:{cellWidth:18}},cell:d=>{if(d.section==='body'&&d.column.index===2){const v=String(d.cell.raw);d.cell.styles.textColor=v.startsWith('Não')?C.ba:v.startsWith('Sem')?MUT:C.wa}}})}
+        else{tx('Todos os checklists do período foram feitos no próprio dia.',M,y,8,'normal',C.ok);y+=6}}
+      if(c.trb.length){sub('Integrações com tribunais');const half=(CW-4)/2;let col=0,y0=y;
+        c.trb.forEach((t,j)=>{if(col===0)ensure(5.2);const x=M+col*(half+4),ok=t.status==='OK';doc.setFillColor(...C[ok?'ok':'ba']);doc.circle(x+1.3,y+1.4,1.1,'F');
+          tx(fit(t.nome,half-28,7.8),x+4,y+2.4,7.8,'normal',INK);tx(ok?'Online':'Fora do ar',x+half,y+2.4,7.4,'bold',C[ok?'ok':'ba'],{align:'right'});
+          if(col===1||j===c.trb.length-1){y+=5;col=0}else col=1});y+=2}
+      if(c.ssl.length){sub('Certificados SSL');c.ssl.forEach(s=>{ensure(5);const d=sslNum(s)?s.dias_restantes:null,k=d==null?'wa':sslK(d);
+        tx(s.host,M,y+2.4,7.8,'normal',INK);tx(d==null?'sem resposta':`${d} dias · válido até ${s.validade||'—'}`,W-M,y+2.4,7.6,'bold',C[k],{align:'right'});y+=5});y+=2}
+      if(Array.isArray(o.pendRows)&&o.pendRows.length){sub(`Expedientes não cadastrados (${o.pendRows.length})`);
+        const g={};o.pendRows.forEach(r=>{const k=r.failure_message||'Sem motivo informado';g[k]=(g[k]||0)+1});const mot=Object.entries(g).sort((a,b)=>b[1]-a[1]);
+        mot.forEach(([m,v])=>{ensure(5.4);tx(fit(m,80,7.8),M,y+2.6,7.8,'normal',INK);const w=Math.max(1,72*v/mot[0][1]);doc.setFillColor(...C.ac);doc.roundedRect(M+84,y+.4,w,3,.6,.6,'F');tx(`${v} (${pct(v,o.pendRows.length)}%)`,M+86+w,y+2.6,7.2,'bold',INK);y+=5});y+=2;
+        if(R.lists){const lim=150;table(['Processo','Motivo','Disponibilizado em'],o.pendRows.slice(0,lim).map(r=>[r.judicial_process_number||'—',r.failure_message||'—',fDT(r.available_at||r.created_at)]),{fs:7,cols:{0:{cellWidth:46},2:{cellWidth:30}}});
+          if(o.pendRows.length>lim)para(`Mostrando ${lim} de ${o.pendRows.length}.`,{size:7,color:MUT})}}
+      if(Array.isArray(o.rotRows)&&o.rotRows.length){sub('Rotinas de consulta');
+        table(['Rotina','Status','Última conclusão','Último processamento'],o.rotRows.map(r=>[r.description||'—',(ROT[String(r.status_rotina||'').toUpperCase()]||[r.status_rotina||'—'])[0],fDT(r.last_finished),r.last_processing||'—']),
+          {fs:7.1,cols:{0:{cellWidth:56},1:{cellWidth:22,fontStyle:'bold'}},cell:d=>{if(d.section==='body'&&d.column.index===1){const k=(ROT[String(o.rotRows[d.row.index].status_rotina||'').toUpperCase()]||[0,'mu'])[1];d.cell.styles.textColor=C[k]||MUT}}})}
+      if(Array.isArray(o.blankRows)&&o.blankRows.length){sub(`Cadastros em branco (${o.blankRows.length})`);
         const cols=Object.keys(o.blankRows[0]).filter(k=>k!=='content').slice(0,4);
-        table(cols.map(k=>k.replace(/_/g,' ').replace(/^./,m=>m.toUpperCase())),o.blankRows.slice(0,200).map(r=>cols.map(k=>/_at$|data/i.test(k)?fDT(r[k]):String(r[k]??'—'))),{fs:7.4})}
-      if(compact){y+=2;return}
-      if(c.trb.length){h2('Integrações com tribunais');table(['Tribunal','Situação','HTTP','Erro'],c.trb.map(t=>[t.nome,t.status==='OK'?'Online':'Fora do ar',String(t.code??'—'),t.error||'—']),{fs:7.6,cols:{0:{cellWidth:50},1:{cellWidth:22},2:{cellWidth:14}},cell:d=>{if(d.section==='body'&&d.column.index===1&&d.cell.raw==='Fora do ar'){d.cell.styles.textColor=LVC.A;d.cell.styles.fontStyle='bold'}}})}
-      if(c.ssl.length){h2('Certificados SSL');table(['Endereço','Dias para renovação','Válido até'],c.ssl.map(s=>[s.host,sslNum(s)?String(s.dias_restantes):'sem resposta',s.validade||'—']),{fs:7.6})}
-      if(days&&o.ck&&o.ck.it.length){h2('Checklists dia a dia');
-        const days=[...new Set(o.ck.it.map(x=>x.iso))].reverse();
-        const cell=x=>{if(!x)return'—';const r=x.rec;return CKL[x.st]+(r?` · #${r.id}`:'')+(r&&r.feito?` · solução ${fmtSol(r.solucao,x.iso)}`:'')+(r&&r.tecnico?` · ${r.tecnico}`:'')};
-        table(['Dia','Manhã (08h)','Tarde (15h)'],days.map(d=>{const it=o.ck.it.filter(x=>x.iso===d);return[`${fmtDM(d)} ${WDS[wdOf(d)]}`,cell(it.find(x=>x.sh==='M')),cell(it.find(x=>x.sh==='T'))]}),
-          {fs:7.4,cols:{0:{cellWidth:20}},cell:d=>{if(d.section==='body'&&d.column.index>0){const v=String(d.cell.raw);if(v.startsWith('Não feito'))d.cell.styles.textColor=LVC.A;else if(v.startsWith('Feito com atraso')||v.startsWith('Em aberto'))d.cell.styles.textColor=LVC.M;else if(v.startsWith('Sem'))d.cell.styles.textColor=MUT}}})}
+        table(cols.map(k=>k.replace(/_/g,' ').replace(/^./,m=>m.toUpperCase())),o.blankRows.slice(0,150).map(r=>cols.map(k=>/_at$|data/i.test(k)?fDT(r[k]):String(r[k]??'—'))),{fs:7})}
     })}
   // ── notas
-  h1(++sec,'Notas metodológicas');
-  ['Expedientes não cadastrados e cadastros em branco consideram o período selecionado. Rotinas, tribunais, certificados e CPU refletem a situação no momento da geração.',
-   'Checklist feito = chamado com data de solução; "feito com atraso" = chamado fechado em outro dia; "não feito" = chamado sem solução; "sem chamado" = turno sem chamado aberto. Fins de semana e dias sem checklist para nenhum cliente (feriados) não entram na conta.',
-   `Certificados entram como risco alto quando faltam menos de ${SSL_ALERT} dias para a renovação. O cliente CNI não entra na conta de expedientes não cadastrados.`,
-   'Níveis de risco, responsáveis e prazos são sugeridos automaticamente por regras do painel e devem ser validados pela coordenação.']
-   .forEach(t=>para('• '+t,{size:8.6,color:INK,after:1.5}));
-  // ── cabeçalho e rodapé de todas as páginas
+  sec('Notas');
+  ['Expedientes e cadastros em branco seguem o período selecionado; rotinas, tribunais, certificados e CPU refletem o momento da geração.',
+   'Checklist: feito = chamado com solução; com atraso = fechado em outro dia; sem chamado = turno sem chamado aberto. Fins de semana e feriados não entram na conta.',
+   `Certificado com menos de ${SSL_ALERT} dias = risco alto. CNI não entra na conta de expedientes. Riscos, responsáveis e prazos são sugeridos por regras do painel.`]
+   .forEach(t=>para('• '+t,{size:7.6,color:MUT,after:1.2}));
+  // cabeçalho e rodapé
   const np=doc.getNumberOfPages();
   for(let i=1;i<=np;i++){doc.setPage(i);
-    if(i>1){font(7.5,'bold',NAVY);doc.text('SPA Vision · Relatório de Monitoramento',M,M+2);font(7.5,'normal',MUT);doc.text(`${escopo} · ${perTxt2}`,W-M,M+2,{align:'right'});doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.line(M,M+4,W-M,M+4)}
-    doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.line(M,H-14,W-M,H-14);
-    font(7.3,'normal',MUT);doc.text(`Coreplan · SPA Vision — documento gerado automaticamente em ${genTxt}`,M,H-9.5);doc.text(`Página ${i} de ${np}`,W-M,H-9.5,{align:'right'})}
+    if(i>1){tx('SPA Vision · Relatório de Monitoramento',M,M+2,7.3,'bold',NAVY);tx(`${escopo} · ${perTxt2}`,W-M,M+2,7.3,'normal',MUT,{align:'right'});doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.line(M,M+4,W-M,M+4)}
+    doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.line(M,H-12.5,W-M,H-12.5);
+    tx(`Coreplan · SPA Vision — gerado automaticamente em ${genTxt}`,M,H-8.5,7,'normal',MUT);tx(`Página ${i} de ${np}`,W-M,H-8.5,7,'normal',MUT,{align:'right'})}
   const slugN=s=>norm(s).slice(0,30)||'clientes';
   const fname=`Relatorio_SPA_Vision_${R.a===R.b?R.a:R.a+'_a_'+R.b}_${RP.scope==='all'?'todos':n===1?slugN(cl[0].c.name):n+'_clientes'}.pdf`;
   doc.save(fname);return fname}
@@ -1321,7 +1394,9 @@ setInterval(()=>{
   const n=Date.now();
   for(const k in SRC){
     // rotina e tribunais chegam via SSE
-    if(k==='rotina'||k==='trib')continue;
+    if(k==='rotina')continue;
+    // tribunais chegam via SSE; enquanto a lista estiver vazia, busca de novo a cada 20s
+    if(k==='trib'){if(!trbKnown()&&!busy.trib&&n-(S.t.trib||0)>20000)run('trib');continue}
     if(!busy[k]&&n-(S.t[k]||0)>SRC[k].every*1000)run(k);
   }
 },15000);
@@ -1339,7 +1414,7 @@ function connectSSE(){
   es.onmessage=e=>{
     try{
       const d=JSON.parse(e.data);
-      if(Array.isArray(d.tribunais)){S.trib=d.tribunais;S.t.trib=Date.now()}
+      if(Array.isArray(d.tribunais)&&(d.tribunais.length||!(S.trib||[]).length)){S.trib=d.tribunais;S.t.trib=Date.now()}
       if(Array.isArray(d.rotina)){
         // merge por prefix, mantendo os campos que a SSE não traz
         const byP=new Map((S.rotina||[]).map(r=>[r.prefix,r]));
