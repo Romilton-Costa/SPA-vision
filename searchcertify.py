@@ -45,7 +45,7 @@ def verificar_certificado(url):
 
     contexto = ssl.create_default_context()
 
-    with socket.create_connection((host, 443)) as sock:
+    with socket.create_connection((host, 443), timeout=10) as sock:
 
         with contexto.wrap_socket(
             sock,
@@ -112,22 +112,24 @@ sites = [
 
 ]
 
-for site in sites:
+if __name__ == "__main__":
+    # Execução manual: python searchcertify.py
+    for site in sites:
 
-    try:
+        try:
 
-        resultado = verificar_certificado(site)
+            resultado = verificar_certificado(site)
 
-        print(
-            f"""
-=================================
-Site: {resultado['host']}
-Validade: {resultado['validade'].strftime('%d/%m/%Y')}
-Dias restantes: {resultado['dias_restantes']}
-"""
-        )
+            print(
+                f"""
+    =================================
+    Site: {resultado['host']}
+    Validade: {resultado['validade'].strftime('%d/%m/%Y')}
+    Dias restantes: {resultado['dias_restantes']}
+    """
+            )
 
-    except Exception as e:
+        except Exception as e:
 
-        print(f"Erro ao verificar {site}")
-        print(str(e))
+            print(f"Erro ao verificar {site}")
+            print(str(e))
