@@ -1,5 +1,6 @@
 
 from searchcertify import verificar_certificado, sites
+from urllib.parse import urlparse
 import requests
 import pandas as pd
 import os
@@ -854,49 +855,65 @@ def _warm_ssl_cache() -> None:
     """Aquece o cache SSL em background — chamado no startup sem bloquear."""
     logger.info("[SSL] Iniciando verificação de certificados em background...")
     try:
-        result = _fetch_ssl_alerts_fresh(threshold_days=10)
+        result = _fetch_ssl_alerts_fresh()
         with _SSL_CACHE_LOCK:
             _SSL_CACHE["data"] = result
             _SSL_CACHE["time"] = time.time()
-        logger.info(f"[SSL] Cache aquecido: {len(result)} alerta(s) encontrado(s).")
+        n_alerta = sum(1 for r in result if r.get("dias_restantes") is not None and r["dias_restantes"] < SSL_ALERT_DAYS)
+        logger.info(f"[SSL] Cache aquecido: {len(result)} certificado(s), {n_alerta} com menos de {SSL_ALERT_DAYS} dias.")
     except Exception as e:
         logger.error(f"[SSL WARM] Erro ao aquecer cache: {e}")
 
 
-def _fetch_ssl_alerts_fresh(threshold_days: int = 10) -> List[Dict[str, Any]]:
-    """Verifica todos os sites em paralelo (ThreadPool) e retorna alertas."""
-    alertas: List[Dict[str, Any]] = []
+# Certificados com menos de SSL_ALERT_DAYS dias para vencer geram alerta no painel
+SSL_ALERT_DAYS = int(os.getenv("SSL_ALERT_DAYS", 10))
 
-    def _check(url: str) -> Optional[Dict[str, Any]]:
+
+def _fetch_ssl_alerts_fresh(threshold_days: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Verifica todos os sites em paralelo (ThreadPool) e retorna o certificado de cada URL.
+    Sem threshold_days, devolve todos (inclusive os que falharam, com dias_restantes=None e o erro).
+    Com threshold_days, devolve só os que vencem em até esse número de dias."""
+    certificados: List[Dict[str, Any]] = []
+
+    def _check(url: str) -> Dict[str, Any]:
         try:
             info = verificar_certificado(url)
-            # Sempre retorna, o filtro é feito depois
             return {
+                "url": url,
                 "host": info["host"],
+                "cliente": info.get("cliente"),
                 "dias_restantes": info["dias_restantes"],
                 "validade": info["validade"].strftime("%d/%m/%Y"),
             }
         except Exception as e:
             logger.warning(f"[SSL CHECK] Falha em {url}: {e}")
-            return None
+            host = urlparse(url if "://" in url else "https://" + url).hostname or url
+            return {"url": url, "host": host, "cliente": None, "dias_restantes": None, "validade": None, "erro": str(e)}
 
     with ThreadPoolExecutor(max_workers=10) as pool:
         futures = {pool.submit(_check, url): url for url in sites}
         for future in as_completed(futures):
             res = future.result()
-            if res and res["dias_restantes"] <= threshold_days:
-                alertas.append(res)
+            if threshold_days is not None and (res["dias_restantes"] is None or res["dias_restantes"] > threshold_days):
+                continue
+            certificados.append(res)
 
-    # Ordena pelos que estão mais perto de expirar
-    alertas.sort(key=lambda x: x["dias_restantes"])
-    return alertas
+    # Ordena pelos que estão mais perto de expirar (falhas no fim)
+    certificados.sort(key=lambda x: (x["dias_restantes"] is None, x["dias_restantes"] if x["dias_restantes"] is not None else 0))
+    return certificados
 
 
-def collect_ssl_alerts(threshold_days: int = 10) -> List[Dict[str, Any]]:
-    """Retorna alertas de certificados usando cache em memória (TTL 1h).
+def collect_ssl_alerts(threshold_days: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Retorna os certificados de todas as URLs usando cache em memória (TTL 1h).
+    Se threshold_days for informado, filtra os que vencem em até esse número de dias.
     A verificação real nunca bloqueia a requisição — serve do cache e,
     se expirado, dispara refresh em background e retorna o dado anterior.
     """
+    def _filtra(dados: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if threshold_days is None:
+            return dados
+        return [d for d in dados if d.get("dias_restantes") is not None and d["dias_restantes"] <= threshold_days]
+
     with _SSL_CACHE_LOCK:
         cached_data = _SSL_CACHE.get("data")
         cached_time = _SSL_CACHE.get("time", 0)
@@ -904,22 +921,22 @@ def collect_ssl_alerts(threshold_days: int = 10) -> List[Dict[str, Any]]:
 
     if cached_data is not None and age < SSL_CACHE_TTL:
         logger.info(f"[SSL] Cache hit (age={int(age)}s)")
-        return cached_data
+        return _filtra(cached_data)
 
     if cached_data is not None:
         # Cache expirou → refresh em background, retorna dado anterior imediatamente
         logger.info("[SSL] Cache expirado — disparando refresh em background")
         threading.Thread(target=_warm_ssl_cache, daemon=True).start()
-        return cached_data
+        return _filtra(cached_data)
 
     # Primeira chamada: sem cache ainda — bloqueia mas com timeout curto por site
     logger.info("[SSL] Primeira carga — buscando certificados...")
     try:
-        result = _fetch_ssl_alerts_fresh(threshold_days=threshold_days)
+        result = _fetch_ssl_alerts_fresh()
         with _SSL_CACHE_LOCK:
             _SSL_CACHE["data"] = result
             _SSL_CACHE["time"] = time.time()
-        return result
+        return _filtra(result)
     except Exception as e:
         logger.error(f"[SSL] Erro na carga inicial: {e}")
         return []

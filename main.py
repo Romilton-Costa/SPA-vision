@@ -18,6 +18,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.background import BackgroundScheduler
 from errbit_service import router as errbit_router
+import checklist_service
 import collector
 from fastapi import FastAPI
 from collector import get_zabbix_cpu_usage
@@ -161,12 +162,20 @@ async def lifespan(app: FastAPI):
         "interval", minutes=5, id="rotina_refresh_job",
     )
 
+    # ── Checklists (planilha do Google, background, cache 10min) ──
+    logger.info("[STARTUP] Disparando leitura da planilha de checklists...")
+    threading.Thread(target=checklist_service.collect_checklists, daemon=True).start()
+    scheduler.add_job(
+        lambda: checklist_service.collect_checklists(force=True),
+        "interval", minutes=10, id="checklist_refresh_job",
+    )
+
     # ── Expedientes — refresh periódico ──
     scheduler.add_job(_scheduled_refresh, "interval", minutes=15, id="refresh_job")
 
     scheduler.start()
     logger.info(
-        "[SCHEDULER] Agendado: expedientes/15min | SSL/1h | rotinas/5min | tribunais/5min"
+        "[SCHEDULER] Agendado: expedientes/15min | SSL/1h | rotinas/5min | tribunais/5min | checklists/10min"
     )
 
     yield  # app rodando
@@ -201,6 +210,7 @@ app.add_middleware(
 # ─── MODELOS ─────────────────────────────────────────────────────────────────
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 app.include_router(errbit_router)
+app.include_router(checklist_service.router)
 # No main.py
 @app.get("/api/stream", tags=["infra"])
 async def stream_events(request: Request):
@@ -390,9 +400,9 @@ def get_resumo(
 @app.get("/api/status/certificados")
 def get_ssl_status():
     try:
-        # threshold_days=10: mostra certificados que expiram nos próximos 10 dias
-        alertas = collector.collect_ssl_alerts(threshold_days=10)
-        return alertas
+        # Devolve o certificado de TODAS as URLs monitoradas (dias_restantes de cada uma).
+        # O painel destaca como alerta os que têm menos de 10 dias.
+        return collector.collect_ssl_alerts()
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 # ─── DETALHES ────────────────────────────────────────────────────────────────

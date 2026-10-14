@@ -91,7 +91,7 @@ h1.logo img{height:clamp(40px,4.2vw,52px);width:auto;display:block}
 .pill small{opacity:.8;font-family:var(--mono);font-size:11px}
 
 /* KPIs */
-.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .kpi{background:var(--surface);border:1px solid var(--line-soft);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;text-align:left;transition:border-color .15s,background .15s;min-width:0}
 .kpi:hover{border-color:var(--line)}
 .kpi[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent 70%),var(--surface)}
@@ -184,7 +184,7 @@ body.open #dr{transform:none;visibility:visible}
 .d-h .meta .msg{flex-basis:100%;font-size:12px}
 .x{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--muted);flex:none}
 .x:hover{color:var(--text);border-color:var(--accent)}
-.dk{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.dk{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
 .dk button{background:var(--surface);border:1px solid var(--line-soft);border-radius:14px;padding:12px 14px;text-align:left;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,background .15s;min-width:0}
 .dk button:hover{border-color:var(--line)}
 .dk button[aria-selected="true"]{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent 75%),var(--surface)}
@@ -238,12 +238,58 @@ td.er{color:var(--bad);font-size:12px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px;margin:0}
 .kv dt{color:var(--muted)}.kv dd{margin:0;font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
 
+/* Checklist: linha do card */
+.ckrow{display:flex;align-items:center;gap:6px;min-width:0;margin-top:-4px}
+.ck-l{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:2px}
+.ckp{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;border-radius:99px;padding:2px 8px;background:var(--bg-2);color:var(--muted);white-space:nowrap}
+.ckp b{font:700 11px var(--mono)}
+.ckp.ok,.ckp.late{color:var(--ok);background:var(--ok-soft)}
+.ckp.bad{color:var(--bad);background:var(--bad-soft)}
+.ckp.open{color:var(--wait);background:var(--wait-soft)}
+.ck-na{font-size:11.5px;color:var(--faint)}
+a.ckp{text-decoration:none;cursor:pointer;transition:filter .15s,box-shadow .15s}
+a.ckp:hover{filter:brightness(1.2);box-shadow:inset 0 0 0 1px currentColor}
+a.ckp::after{content:"↗";font-size:10px;opacity:.7;margin-left:-1px}
+.ck-strip{display:flex;gap:2px;margin-left:auto;flex:none}
+.ck-strip i{display:flex;flex-direction:column;gap:1px;width:6px}
+.ck-strip b{height:6px;border-radius:1.5px}
+.ck-strip b,.hc b,.lg i{background:var(--line)}
+b.ok,.lg i.ok{background:var(--ok)!important}b.late,.lg i.late{background:var(--wait)!important}b.open{background:var(--wait)!important}
+b.bad,.lg i.bad{background:var(--bad)!important}b.none,.lg i.none{background:var(--line)!important}b.wait,b.off,b.hol{background:var(--line-soft)!important}
+/* Checklist: aba do painel */
+.cktools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.cksum{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 20px;align-items:center;background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:14px 16px}
+.cksum .big{font:600 32px var(--display);line-height:1;font-variant-numeric:tabular-nums}
+.cksum .big small{font-size:14px;color:var(--muted);font-weight:500}
+.cksum .cap{font-size:12px;color:var(--muted);margin-top:4px}
+.cksum .bar{height:8px}
+.lg{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.lg span{display:inline-flex;align-items:center}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.lg b{color:var(--text);font-weight:600;margin-left:4px;font-variant-numeric:tabular-nums}
+.ckheat{display:flex;gap:8px;background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;overflow-x:auto}
+.ckh-days,.ckh-grid{display:grid;grid-template-rows:14px repeat(5,16px);gap:3px}
+.ckh-days{font:500 10px var(--mono);color:var(--faint)}
+.ckh-days span{line-height:16px}
+.ckh-grid{grid-auto-flow:column;grid-auto-columns:16px}
+.ckh-m{font:500 10px var(--mono);color:var(--faint);white-space:nowrap;overflow:visible;line-height:14px}
+.hc{width:16px;height:16px;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;gap:1px;background:var(--bg-2);padding:0;border:0;cursor:pointer}
+.hc b{flex:1;display:block}
+.hc:hover{outline:2px solid var(--accent);outline-offset:1px}
+.hc.off{visibility:hidden;pointer-events:none}
+.ckd{display:block;font-size:11.5px;color:var(--muted);margin-top:4px}
+td .tk{color:var(--text);text-decoration:none;font:500 12px var(--mono);margin-left:6px}
+td .tk:hover{color:var(--accent)}
+tr.flash td{animation:flash 1.6s ease-out}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+
 /* Toasts */
 #toast{position:fixed;right:24px;bottom:24px;display:flex;flex-direction:column;gap:8px;z-index:60;max-width:min(420px,calc(100vw - 32px))}
 #toast div{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:12px 16px;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
 #toast .ba{border-left-color:var(--bad)}
 
 @media (max-width:1280px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1100px){.dk{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:860px){.dk{grid-template-columns:repeat(3,minmax(0,1fr))}.gauges{grid-template-columns:1fr}}
 @media (max-width:620px){
   .kpis{grid-template-columns:1fr 1fr}.kpi .val{font-size:24px}
@@ -269,7 +315,7 @@ td.er{color:var(--bad);font-size:12px}
     <div class="controls">
       <div class="clock" id="clock" aria-hidden="true">--:--:--</div>
       <div class="seg" id="per" role="group" aria-label="Período">
-        <button data-v="" aria-pressed="true">Padrão</button><button data-v="hoje" aria-pressed="false">Hoje</button><button data-v="semana" aria-pressed="false">7 dias</button><button data-v="30d" aria-pressed="false">30 dias</button><button data-v="mes" aria-pressed="false">Mês</button><button data-v="mesant" aria-pressed="false">Mês anterior</button>
+        <button data-v="hoje" aria-pressed="true">Hoje</button><button data-v="semana" aria-pressed="false">7 dias</button><button data-v="30d" aria-pressed="false">30 dias</button><button data-v="mes" aria-pressed="false">Mês</button><button data-v="mesant" aria-pressed="false">Mês anterior</button>
       </div>
       <div class="rng" id="rng" role="group" aria-label="Período personalizado" data-on="false">
         <label for="d1">De</label><input class="field" type="date" id="d1" aria-label="Data inicial">
@@ -284,10 +330,6 @@ td.er{color:var(--bad);font-size:12px}
       <button class="btn ico" id="fs" title="Tela cheia" aria-label="Tela cheia">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       </button>
-      <a class="btn" href="/checklist" target="_blank" rel="noopener">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        Checklist
-      </a>
       <div class="sync">
         <span class="live" id="conn"><i></i>conectando…</span>
         <span>Atualizado <b id="lastSync">—</b></span>
@@ -360,7 +402,7 @@ const sslNum=x=>typeof x.dias_restantes==='number';
 const sslK=d=>d<SSL_ALERT?'ba':'ok';
 const UFN={ac:'acre',al:'alagoas',ap:'amapa',am:'amazonas',ba:'bahia',ce:'ceara',df:'distritofederal',es:'espiritosanto',go:'goias',ma:'maranhao',mt:'matogrosso',ms:'matogrossodosul',mg:'minasgerais',pa:'para',pb:'paraiba',pr:'parana',pe:'pernambuco',pi:'piaui',rj:'riodejaneiro',rn:'riograndedonorte',rs:'riograndedosul',ro:'rondonia',rr:'roraima',sc:'santacatarina',sp:'saopaulo',se:'sergipe',to:'tocantins'};
 const S={err:{},em:{},t:{}};
-let F='ALL',T='ALL',Q='',P='',SORT=lsGet('spa:sort')||'sev',alertsAll=false,prevBad=null,mute=lsGet('spa:mute')==='1';
+let F='ALL',T='ALL',Q='',P='hoje',perDay=null,SORT=lsGet('spa:sort')||'sev',alertsAll=false,prevBad=null,mute=lsGet('spa:mute')==='1';
 const CK='spa:v2';
 const ICON={
   bell:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
@@ -368,6 +410,8 @@ const ICON={
 };
 
 /* ───────── fontes de dados (carregam em paralelo e hidratam a tela conforme chegam) ───────── */
+const perA=()=>sessionStorage.getItem('spa_inicio')||isoD(new Date()),perB=()=>sessionStorage.getItem('spa_fim')||perA(),perKey=()=>perA()+'_'+perB();
+const perWord=()=>perA()===perB()?(P==='hoje'?'hoje':'no dia'):'no período';
 const qs=()=>{const a=sessionStorage.getItem('spa_inicio'),b=sessionStorage.getItem('spa_fim');return a?`?dataInicio=${a}${b?'&dataFim='+b:''}`:''};
 async function j(u,ms=90000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
   try{const r=await fetch(u,{signal:c.signal,headers:{Accept:'application/json'}});
@@ -380,9 +424,10 @@ const SRC={
     if(b.status==='fulfilled'&&b.value&&b.value.prefixo)l.push(b.value);return l}},
   cpu:{every:120,load:async()=>(await j('/api/zabbix/cpu')).data||[]},
   ssl:{every:3600,load:()=>j('/api/status/certificados')},
-  trib:{every:300,load:()=>j('/api/status/tribunais')}
+  trib:{every:300,load:()=>j('/api/status/tribunais')},
+  chk:{every:600,load:async()=>(await j('/api/checklist')).clientes||[]}
 };
-const LBL={resumo:'Expedientes não cadastrados',rotina:'Rotinas',blank:'Em branco',cpu:'CPU',ssl:'SSL',trib:'Tribunais'};
+const LBL={resumo:'Expedientes não cadastrados',rotina:'Rotinas',blank:'Em branco',cpu:'CPU',ssl:'SSL',trib:'Tribunais',chk:'Checklist'};
 const busy={};
 const gen={};
 async function run(k){const my=gen[k]=(gen[k]||0)+1;busy[k]=1;render();   // cada chamada invalida as anteriores
@@ -390,8 +435,66 @@ async function run(k){const my=gen[k]=(gen[k]||0)+1;busy[k]=1;render();   // cad
   catch(e){if(my!==gen[k])return;S.err[k]=1;S.em[k]=(e&&e.name==='AbortError')?'tempo esgotado':(e&&e.message)||'resposta inválida';if(k==='resumo')toast(LBL[k]+': '+S.em[k],'ba')}
   finally{if(my===gen[k]){busy[k]=0;render()}}}
 const all=()=>Object.keys(SRC).forEach(run);
-function save(){try{localStorage.setItem(CK,JSON.stringify({p:P,s:Object.fromEntries(Object.keys(SRC).map(k=>[k,S[k]]))}))}catch(_){}}
-function hydrate(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.p===P)Object.assign(S,c.s)}catch(_){}}
+function save(){try{localStorage.setItem(CK,JSON.stringify({p:perKey(),s:Object.fromEntries(Object.keys(SRC).map(k=>[k,S[k]]))}))}catch(_){}}
+function hydrate(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.p===perKey())Object.assign(S,c.s)}catch(_){}}
+
+/* ───────── checklists (planilha do GLPI via /api/checklist) ───────── */
+const CHK_GRACE_MIN=120; // checklist de hoje sem solução fica "em aberto" nas 2h após a abertura; depois vira "não feito" (0 = igual ao painel antigo)
+const TICKET_URL='https://suporte.coreplan.com.br/front/ticket.form.php?id=';
+const SHN={M:'Manhã',T:'Tarde'},SHH={M:'08h',T:'15h'},SHHOUR={M:8,T:15};
+const CKL={ok:'Feito',late:'Feito com atraso',open:'Em aberto',bad:'Não feito',wait:'Aguardando abertura',none:'Sem chamado',off:'Fim de semana',hol:'Sem abertura no dia'};
+const CKI={ok:'✓',late:'✓',open:'…',bad:'✕',wait:'◷',none:'—',off:'—',hol:'—'};
+const CKC={ok:'ok',late:'wa',open:'wa',bad:'ba',wait:'mu',none:'mu',off:'mu',hol:'mu'};
+const STOPW=new Set(['pgm','pge','pg','de','da','do','das','dos','e','procuradoria','geral','municipio','municipal','prefeitura','estado','previdencia','universidade','homologacao','spa','producao']);
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'],WDS=['dom','seg','ter','qua','qui','sex','sáb'];
+const isoD=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addD=(iso,n)=>{const[y,m,d]=iso.split('-').map(Number);return isoD(new Date(y,m-1,d+n))};
+const wdOf=iso=>{const[y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).getDay()};
+const isWE=iso=>{const g=wdOf(iso);return g===0||g===6};
+const fmtDM=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
+// Identidade do cliente para casar card ↔ planilha: PGE/PG pelo estado; demais pelas palavras do nome
+function nameKey(name){
+  let n=String(name||'');const ufm=n.match(/\/([A-Z]{2})\s*$/);if(ufm)n=n.slice(0,ufm.index);
+  const words=n.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  if(/^\s*pge?\b/i.test(name)){
+    let uf=ufm?ufm[1].toLowerCase():'';const j=words.filter(w=>!STOPW.has(w)).join('');
+    if(!uf)uf=words.find(w=>w.length===2&&UFN[w])||'';
+    if(!uf){const hit=Object.entries(UFN).sort((a,b)=>b[1].length-a[1].length).find(([,nm])=>j.includes(nm));if(hit)uf=hit[0]}
+    return{pg:true,type:'PGE',words:new Set([uf?'uf:'+uf:j])}}
+  return{pg:false,type:/^\s*pgm/i.test(name)?'PGM':'OUT',words:new Set(words.filter(w=>!STOPW.has(w)))}}
+function keyScore(a,b){ // a = planilha, b = card
+  if(a.pg!==b.pg||(a.type==='OUT'&&b.type==='PGM'))return 0;
+  let i=0;for(const w of a.words)if(b.words.has(w))i++;
+  const u=a.words.size+b.words.size-i;return u?i/u:0}
+let CKM={src:null,list:[],min:null,all:new Set()};
+function ckModel(){
+  if(CKM.src===S.chk)return CKM.list;
+  let min=null;const all=new Set();
+  CKM.list=(S.chk||[]).map(c=>{const by=new Map();
+    (c.checklists||[]).forEach(x=>{if(!by.has(x.data))by.set(x.data,{});by.get(x.data)[x.turno]=x;all.add(x.data);if(!min||x.data<min)min=x.data});
+    return{nome:c.nome,uf:c.uf||'',escala:c.escala||null,by,key:nameKey(c.nome)}});
+  CKM.src=S.chk;CKM.min=min;CKM.all=all;return CKM.list}
+function ckSt(rec,iso,sh){
+  const now=new Date(),today=isoD(now);
+  if(rec){
+    if(rec.feito)return /^\d{4}-\d{2}-\d{2}/.test(rec.solucao||'')&&rec.solucao.slice(0,10)!==iso?'late':'ok';
+    if(iso===today){const[h,mi]=String(rec.aberto||'0:0').split(':').map(Number);if(now.getHours()*60+now.getMinutes()-(h*60+mi)<CHK_GRACE_MIN)return'open'}
+    return'bad'}
+  if(isWE(iso))return'off';
+  if(iso<today&&CKM.min&&iso>=CKM.min&&!CKM.all.has(iso))return'hol'; // nenhum cliente teve checklist (feriado)
+  if(iso>today||(iso===today&&now.getHours()<SHHOUR[sh]))return'wait';
+  return'none'}
+const fmtSol=(sol,iso)=>{if(!sol)return'';const m=String(sol).match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/);return m?(m[1]===iso?m[2]:`${fmtDM(m[1])} ${m[2]}`):String(sol)};
+// checklists de um período (dias úteis, manhã e tarde) e o resumo: feitos / que deveriam ser feitos
+function ckItems(k,a,b){const out=[];for(let d=a;d<=b;d=addD(d,1)){if(isWE(d)&&!k.by.has(d))continue;const r=k.by.get(d)||{};
+  for(const sh of['M','T'])out.push({iso:d,sh,rec:r[sh]||null,st:ckSt(r[sh]||null,d,sh)})}return out}
+function ckSum(k,a,b){const it=ckItems(k,a,b),n=s=>it.filter(x=>x.st===s).length;
+  const o={it,ok:n('ok'),late:n('late'),open:n('open'),bad:n('bad'),none:n('none'),wait:n('wait')};
+  o.done=o.ok+o.late;o.exp=o.done+o.open+o.bad+o.none;return o}
+const ckLink=(k,x,cls,inner)=>x.rec?`<a class="${cls}" href="${TICKET_URL}${encodeURIComponent(x.rec.id)}" target="_blank" rel="noopener" title="${esc(ckTip(k,x.iso,x.sh,x.rec,x.st)+' · abrir o chamado no GLPI')}">${inner}</a>`:`<span class="${cls}" title="${esc(ckTip(k,x.iso,x.sh,x.rec,x.st))}">${inner}</span>`;
+const escOf=(k,sh)=>k&&k.escala?(sh==='M'?k.escala.manha:k.escala.tarde):'';
+function ckTip(k,iso,sh,rec,st){
+  return`${fmtDM(iso)} ${WDS[wdOf(iso)]} · ${SHN[sh]} ${SHH[sh]} · ${CKL[st]}${rec?` · #${rec.id}`:''}${rec&&rec.feito?` · solução ${fmtSol(rec.solucao,iso)}`:''}${rec&&rec.tecnico?` · ${rec.tecnico}`:escOf(k,sh)?` · escala: ${escOf(k,sh)}`:''}`}
 
 /* ───────── modelo: une todas as fontes por cliente ───────── */
 function build(){
@@ -416,8 +519,18 @@ function build(){
     if(lab&&lab.length>=4){const n=norm(lab),cs=L.filter(c=>c.core.includes(n));if(cs.length)return cs.find(c=>c.core===n)||cs.sort((a,b)=>a.core.length-b.core.length)[0]}
     return null};
   (S.ssl||[]).forEach(x=>{const c=findHost(x.host);c?c.ssl.push(x):orf.ssl.push(x)});
+  // checklist → card: melhor nome (≥ 50% das palavras); cada card fica com o checklist mais parecido
+  L.forEach(c=>{c.nk=nameKey(c.name);c.ck=null;c.ckS=0});
+  orf.chk=[];
+  ckModel().forEach(k=>{let best=null,bs=0;for(const c of L){const s=keyScore(k.key,c.nk);if(s>bs){bs=s;best=c}}
+    if(best&&bs>=.5&&bs>best.ckS){if(best.ck)orf.chk.push(best.ck);best.ck=k;best.ckS=bs}else orf.chk.push(k)});
+  const TD=isoD(new Date());
+  const PA=perA(),PB=perB();
+  L.forEach(c=>{c.ckT=null;c.ckBad=0;c.ckP=null;if(!c.ck)return;const d=c.ck.by.get(TD)||{};
+    c.ckT=['M','T'].map(sh=>({sh,rec:d[sh]||null,st:ckSt(d[sh]||null,TD,sh)}));c.ckBad=c.ckT.filter(x=>x.st==='bad').length;
+    c.ckP=ckSum(c.ck,PA,PB)});
   L.forEach(c=>{const r=String(c.rot||'').toUpperCase();c.rk=r==='OK'?'OK':r;c.rbad=RB.has(r);const so=c.ssl.filter(sslNum);c.minssl=so.length?Math.min(...so.map(s=>s.dias_restantes)):null;c.sslErr=c.ssl.length>0&&!so.length;
-    c.sev=(c.pst&&c.pst!=='ok')||c.rbad||c.tbad||(c.minssl!==null&&c.minssl<SSL_ALERT)?3:(RW.has(r)||c.blank>0||c.cpu>=85||c.sslErr)?2:c.pend>0?1:0});
+    c.sev=(c.pst&&c.pst!=='ok')||c.rbad||c.tbad||(c.minssl!==null&&c.minssl<SSL_ALERT)?3:(RW.has(r)||c.blank>0||c.cpu>=85||c.sslErr||c.ckBad)?2:c.pend>0?1:0});
   L.sort(SORTS.sev);
   return{L,orf}}
 const SORTS={
@@ -434,7 +547,8 @@ const FIL={
   rot:c=>c.rbad||RW.has(c.rk),
   blank:c=>c.blank>0,
   trib:c=>c.tbad,
-  ssl:c=>c.minssl!==null&&c.minssl<SSL_ALERT
+  ssl:c=>c.minssl!==null&&c.minssl<SSL_ALERT,
+  chk:c=>!!c.ckP&&c.ckP.bad>0
 };
 const rotOf=c=>ROT[c.rk]||(c.rk?['Verificar','wa']:[null,'']);
 const ld=k=>S[k]===undefined&&!S.err[k];
@@ -454,7 +568,7 @@ function paint(){
   paintChips(L);
   paintGrid(L);
   paintOrf(orf);
-  if(cur&&document.body.classList.contains('open')){paintDrawerHead(L);if(tab==='trib')renderTribTab(L);else if(tab==='ssl')renderSslTab(L)}
+  if(cur&&document.body.classList.contains('open')){paintDrawerHead(L);if(tab==='trib')renderTribTab(L);else if(tab==='ssl')renderSslTab(L);else if(tab==='chk')renderChkTab(L)}
 }
 function paintHeader(L){
   $('#subtitle').textContent=L.length?`${L.length} clientes monitorados · período: ${perTxt()}`:ld('resumo')?'Carregando clientes…':'Nenhum cliente carregado';
@@ -477,11 +591,12 @@ function paintAlerts(L){
     if(c.rbad){w.push('rotina: '+rotOf(c)[0].toLowerCase());tab=tab||'rot';s+=3}
     if(c.tbad){w.push(c.tbadN+(c.tbadN>1?' tribunais fora':' tribunal fora'));tab=tab||'trib';s+=2}
     if(c.minssl!==null&&c.minssl<SSL_ALERT){w.push('SSL '+c.minssl+'d');tab=tab||'ssl';s+=2}
+    if(c.ckBad){w.push('checklist '+c.ckT.filter(x=>x.st==='bad').map(x=>SHN[x.sh].toLowerCase()).join(' e ')+' não feito');tab=tab||'chk';s+=1}
     if(w.length)items.push({c,tab,s,sm:w.join(' · ')})});
   items.sort((a,b)=>b.s-a.s||a.c.name.localeCompare(b.c.name,'pt-BR'));
   $('#alerts').hidden=!items.length;
   const LIM=10,shown=alertsAll?items:items.slice(0,LIM);
-  setHTML('#alertPills',shown.map(p=>`<button class="pill bad" data-open="${esc(p.c.p)}" data-tab="${p.tab}">${esc(p.c.name)} <small>· ${esc(p.sm)}</small></button>`).join('')
+  setHTML('#alertPills',shown.map(p=>`<button class="pill ${p.s>1?'bad':'wait'}" data-open="${esc(p.c.p)}" data-tab="${p.tab}">${esc(p.c.name)} <small>· ${esc(p.sm)}</small></button>`).join('')
     +(items.length>LIM?`<button class="pill more" data-more>${alertsAll?'Mostrar menos':'+'+(items.length-LIM)+' clientes'}</button>`:''));
 }
 function paintKpis(L,orf){
@@ -493,7 +608,7 @@ function paintKpis(L,orf){
   const pc=(n,d)=>d?(n/d*100)+'%':'0';
   const K=(f,lbl,v,cls,foot,bar='')=>`<button class="kpi" data-f="${f}" aria-pressed="${F===f}"><div class="lbl">${lbl}<em>${F===f?'filtrando':'filtrar'}</em></div><div class="val ${cls}">${v}</div>${bar}<div class="foot">${foot}</div></button>`;
   setHTML('#kpis',
-    K('pend','Expedientes não cadastrados',val('resumo',S.resumo?nf(tot):null),tot?'c-wa':'c-ok',`em <b>${cnt(FIL.pend)}</b> ${cnt(FIL.pend)===1?'cliente':'clientes'}${P?' · no período':''}`)
+    K('pend','Expedientes não cadastrados',val('resumo',S.resumo?nf(tot):null),tot?'c-wa':'c-ok',`em <b>${cnt(FIL.pend)}</b> ${cnt(FIL.pend)===1?'cliente':'clientes'} · ${perWord()}`)
    +K('rot','Rotinas',val('rotina',S.rotina?rBad:null)+'<small> com erro</small>',rBad?'c-ba':'c-ok',
       `<b class="c-ba">${rBad}</b> com erro · <b class="c-wa">${rWarn}</b> verificar · ${rAll} rotinas`,
       `<div class="bar"><i style="width:${pc(rOk,rAll)};background:var(--ok)"></i><i style="width:${pc(rWarn,rAll)};background:var(--wait)"></i><i style="width:${pc(rBad,rAll)};background:var(--bad)"></i></div>`)
@@ -501,8 +616,19 @@ function paintKpis(L,orf){
    +K('trib','Tribunais',val('trib',S.trib?tOff:null)+'<small> fora do ar</small>',tOff?'c-ba':'c-ok',
       `${tAll} integrações · <b>${cnt(FIL.trib)}</b> ${cnt(FIL.trib)===1?'cliente afetado':'clientes afetados'}`,
       `<div class="bar"><i style="width:${pc(tAll-tOff,tAll)};background:var(--ok)"></i><i style="width:${pc(tOff,tAll)};background:var(--bad)"></i></div>`)
+   +ckKpi(L,K,pc)
    +K('ssl','Certificados',val('ssl',S.ssl?sAl:null)+`<small> com menos de ${SSL_ALERT} dias</small>`,sAl?'c-ba':'c-ok',`${sNum.length} monitorados${sMin!=null?` · menor prazo <b>${sMin} dias</b>`:''}${sErr?` · <b class="c-wa">${sErr}</b> sem resposta`:''}`));
 }
+function ckKpi(L,K,pc){
+  const PA=perA(),PB=perB(),single=PA===PB,TD=isoD(new Date());
+  const cs=L.filter(c=>c.ckP).map(c=>c.ckP),sum=k=>cs.reduce((s,o)=>s+o[k],0);
+  const done=sum('done'),exp=sum('exp'),bad=sum('bad'),op=sum('open'),late=sum('late'),none=sum('none'),wt=sum('wait'),tot=exp+wt;
+  const lbl=single?(PA===TD?'Checklist hoje':`Checklist · ${fmtDM(PA)}`):'Checklist no período';
+  const v=S.chk?(exp?`${done}<small>/${exp}</small>`:'—'):null;
+  const foot=!S.chk?'':!tot?`sem checklist ${single?'no dia':'no período'}`:
+    [`<b class="c-ba">${bad}</b> não feito${bad===1?'':'s'}`,late?`<b class="c-wa">${late}</b> com atraso`:'',op?`<b class="c-wa">${op}</b> em aberto`:'',none?`${none} sem chamado`:'',wt?`${wt} aguardando abertura`:''].filter(Boolean).join(' · ');
+  return K('chk',lbl,val('chk',v),bad?'c-ba':done<exp?'c-wa':'c-ok',foot,
+    `<div class="bar"><i style="width:${pc(done-late,tot)};background:var(--ok)"></i><i style="width:${pc(late+op,tot)};background:var(--wait)"></i><i style="width:${pc(bad,tot)};background:var(--bad)"></i><i style="width:${pc(none,tot)};background:var(--line)"></i></div>`)}
 function paintChips(L){
   const n=t=>t==='ALL'?L.length:L.filter(c=>c.type===t).length;
   setHTML('#tipo',TYPES.filter(([k])=>k==='ALL'||n(k)).map(([k,l])=>`<button class="chip" data-v="${k}" aria-pressed="${T===k}">${l} <b>${n(k)}</b></button>`).join('')
@@ -522,15 +648,16 @@ function paintGrid(L){
   setHTML('#grid',html);
 }
 function paintOrf(orf){
-  const o=$('#orf'),ns=orf.ssl.length,nt=orf.trib.length;
-  o.hidden=!(ns||nt);
-  if(!(ns||nt))return;
-  o.querySelector('summary').textContent=`Itens sem cliente associado (${ns+nt})`;
+  const o=$('#orf'),ns=orf.ssl.length,nt=orf.trib.length,nc=orf.chk.length;
+  o.hidden=!(ns||nt||nc);
+  if(!(ns||nt||nc))return;
+  o.querySelector('summary').textContent=`Itens sem cliente associado (${ns+nt+nc})`;
   setHTML('#orfBody',
     (ns?`<h4>Certificados · ${ns}</h4><ul>${orf.ssl.slice().sort((x,y)=>(sslNum(x)?x.dias_restantes:1e9)-(sslNum(y)?y.dias_restantes:1e9)).map(x=>`<li><span class="st ${sslNum(x)?sslK(x.dias_restantes):'mu'}">${sslNum(x)?esc(x.dias_restantes)+' dias':'sem resposta'}</span>${esc(x.cliente||x.host)} · <code>${esc(x.host)}</code></li>`).join('')}</ul>`:'')
-   +(nt?`<h4>Tribunais · ${nt}</h4><ul>${orf.trib.map(t=>`<li><span class="st ${t.status==='OK'?'ok':'ba'}">${t.status==='OK'?'Online':'Fora do ar'}</span>${esc(t.cliente||'—')} · ${esc(t.nome)}</li>`).join('')}</ul>`:''));
+   +(nt?`<h4>Tribunais · ${nt}</h4><ul>${orf.trib.map(t=>`<li><span class="st ${t.status==='OK'?'ok':'ba'}">${t.status==='OK'?'Online':'Fora do ar'}</span>${esc(t.cliente||'—')} · ${esc(t.nome)}</li>`).join('')}</ul>`:'')
+   +(nc?`<h4>Checklists · ${nc}</h4><ul>${orf.chk.map(k=>`<li><span class="st mu">planilha</span>${esc(k.nome)}</li>`).join('')}</ul>`:''));
 }
-const skel=()=>Array(9).fill('<div class="cc" style="cursor:default"><div class="cc-h"><span class="sh" style="width:34px"></span><div class="nm"><span class="sh" style="width:160px"></span></div></div><div class="tiles">'+'<div class="tile"><i class="sh" style="width:28px"></i></div>'.repeat(5)+'</div><div class="cc-f"><span class="sh" style="width:120px;height:12px"></span></div></div>').join('');
+const skel=()=>Array(9).fill('<div class="cc" style="cursor:default"><div class="cc-h"><span class="sh" style="width:34px"></span><div class="nm"><span class="sh" style="width:160px"></span></div></div><div class="tiles">'+'<div class="tile"><i class="sh" style="width:28px"></i></div>'.repeat(5)+'</div><div class="ckrow"><span class="sh" style="width:200px;height:14px"></span></div><div class="cc-f"><span class="sh" style="width:120px;height:12px"></span></div></div>').join('');
 function tile(k,v,cls,lab,title,txt){return`<div class="tile${lab.length>12?' wide':''} ${v==null?'':cls}" title="${esc(title)}"><span class="v${txt?' tx':''}">${val(k,v)}</span><span class="k">${lab}</span></div>`}
 function why(c){const w=[],rl=rotOf(c)[0];
   if(c.pst&&c.pst!=='ok')w.push(['ba','Erro ao consultar expedientes não cadastrados']);
@@ -539,11 +666,25 @@ function why(c){const w=[],rl=rotOf(c)[0];
   if(c.minssl!==null&&c.minssl<SSL_ALERT)w.push(['ba',`SSL vence em ${c.minssl} dias`]);
   if(RW.has(c.rk))w.push(['wa','Rotina: '+rl]);
   if(c.cpu>=85)w.push(['wa',`CPU alta (${Number(c.cpu).toFixed(0)}%)`]);
+  if(c.ckBad)w.push(['wa',c.ckBad>1?'Checklists de hoje não feitos':`Checklist da ${SHN[c.ckT.find(x=>x.st==='bad').sh].toLowerCase()} não feito`]);
   if(c.sslErr)w.push(['wa','Falha ao verificar o certificado']);
   if(c.blank>0)w.push(['wa',`${nf(c.blank)} em branco`]);
   if(c.pend>0)w.push(['ac',`${nf(c.pend)} ${c.pend>1?'expedientes não cadastrados':'expediente não cadastrado'}`]);
   if(!w.length)return['ok','Tudo em dia'];
   return[w[0][0],w.slice(0,2).map(x=>x[1]).join(' · ')+(w.length>2?` · +${w.length-2}`:'')]}
+function ckRow(c){
+  if(!c.ck)return`<div class="ckrow"><span class="ck-l">Checklist</span>${ld('chk')?'<i class="sh" style="width:150px;height:14px"></i>':`<span class="ck-na">${S.chk?'não monitorado':'—'}</span>`}</div>`;
+  const k=c.ck,o=c.ckP,PA=perA(),PB=perB(),TD=isoD(new Date());
+  let main;
+  if(PA===PB)main=o.it.length?o.it.map(x=>ckLink(k,x,'ckp '+x.st,`${SHN[x.sh]}<b>${CKI[x.st]}</b>`)).join(''):'<span class="ck-na">fim de semana</span>';
+  else if(!o.exp)main=`<span class="ckp">—</span><span class="ck-na">sem checklist no período</span>`;
+  else{const cls=o.bad?'bad':o.done<o.exp?'open':'ok';
+    const tip=`${fmtDM(PA)} a ${fmtDM(PB)} · ${o.done} de ${o.exp} feitos · ${o.ok} no dia · ${o.late} com atraso · ${o.bad} não feitos · ${o.none} sem chamado${o.open?` · ${o.open} em aberto`:''}`;
+    main=`<span class="ckp ${cls}" title="${esc(tip)}"><b>${o.done}/${o.exp}</b> feitos</span>${o.bad?`<span class="ckp bad">${o.bad} não feito${o.bad>1?'s':''}</span>`:o.late?`<span class="ckp open">${o.late} com atraso</span>`:''}`}
+  const days=[],end=PB<TD?PB:TD;for(let d=end;days.length<10;d=addD(d,-1))if(!isWE(d))days.unshift(d);
+  const strip=days.map(iso=>{const r=k.by.get(iso)||{},m=ckSt(r.M,iso,'M'),t=ckSt(r.T,iso,'T');
+    return`<i title="${esc(fmtDM(iso)+' '+WDS[wdOf(iso)]+' · manhã: '+CKL[m].toLowerCase()+' · tarde: '+CKL[t].toLowerCase())}"><b class="${m}"></b><b class="${t}"></b></i>`}).join('');
+  return`<div class="ckrow"><span class="ck-l">Checklist</span>${main}<span class="ck-strip" aria-label="10 dias úteis até ${fmtDM(end)}">${strip}</span></div>`}
 function card(c){
   const[rl,rc]=rotOf(c),[h,hl]=SEV[c.sev],[wc,wt]=why(c);
   const err=c.pst&&c.pst!=='ok';
@@ -552,7 +693,7 @@ function card(c){
   const sslc=c.minssl!=null?sslK(c.minssl):'mu';
   const nt=c.trb.length;
   return`<article class="cc ${h}" role="button" tabindex="0" data-p="${esc(c.p)}" aria-label="${esc(c.name)}: abrir detalhes">
-<div class="cc-h"><span class="uf ${c.type}">${c.type==='OUT'?'—':c.type}</span><div class="nm"><h3 title="${esc(c.name)}">${esc(c.name)}</h3><div class="t">${esc(c.p)}${nt?(c.tbad?` · <span class="c-ba">${c.tbadN}/${nt} tribuna${nt>1?'is':'l'} fora</span>`:` · ${nt} tribuna${nt>1?'is':'l'}`):''}</div></div><span class="health ${h}">${hl}</span></div>
+<div class="cc-h"><span class="uf ${c.type}">${c.type==='OUT'?'—':c.type}</span><div class="nm"><h3 title="${esc(c.name)}">${esc(c.name)}</h3>${nt?`<div class="t">${c.tbad?`<span class="c-ba">${c.tbadN}/${nt} tribuna${nt>1?'is':'l'} fora</span>`:`${nt} tribuna${nt>1?'is':'l'}`}</div>`:''}</div><span class="health ${h}">${hl}</span></div>
 <div class="tiles">
 ${tile('resumo',err?'erro':c.pend!=null?nf(c.pend):null,err?'ba':c.pend?'wa':'ok','Expedientes não cadastrados','Expedientes não cadastrados')}
 ${tile('rotina',rl,rc,'Rotina',(c.msg||'Status da rotina')+(c.rtot?` · total: ${c.rtot}`:''),1)}
@@ -560,6 +701,7 @@ ${tile('blank',c.blank!=null?nf(c.blank):null,c.blank?'wa':'ok','Branco','Cadast
 ${tile('ssl',sslv,sslc,'SSL',c.ssl.length?'Dias para renovação · '+c.ssl.map(s=>`${s.host}: ${sslNum(s)?s.dias_restantes+' dias':'sem resposta'}`).join(' · '):'URL sem certificado monitorado')}
 ${tile('cpu',c.cpu!=null?Number(c.cpu).toFixed(0)+'<small>%</small>':null,cpuc,'CPU','Uso de CPU (Zabbix)')}
 </div>
+${ckRow(c)}
 <div class="cc-f"><span class="why ${wc}" title="${esc(wt)}">${esc(wt)}</span><span class="go">Detalhes →</span></div></article>`}
 
 /* ───────── painel de detalhes (carrega só ao abrir) ───────── */
@@ -573,19 +715,26 @@ const findCur=L=>(L||build().L).find(x=>x.p===cur);
 function tabsHTML(c){
   const[rl,rc]=rotOf(c),err=c.pst&&c.pst!=='ok',nt=c.trb.length;
   const b=(k,lab,v,cls,sub,txt)=>`<button role="tab" data-t="${k}" aria-selected="${tab===k}"><span class="k">${lab}</span><span class="v${txt?' tx':''} c-${cls}">${v}</span><span class="s">${sub}</span></button>`;
-  return b('pend','Expedientes não cadastrados',val('resumo',err?'erro':c.pend!=null?nf(c.pend):null),err?'ba':c.pend?'wa':'ok',P?'no período':'total atual')
+  return b('pend','Expedientes não cadastrados',val('resumo',err?'erro':c.pend!=null?nf(c.pend):null),err?'ba':c.pend?'wa':'ok',perWord())
     +b('rot','Rotina',val('rotina',rl),rc||'mu',c.rtot?`total: ${nf(c.rtot)}`:'status da rotina',1)
     +b('blank','Em branco',val('blank',c.blank!=null?nf(c.blank):null),c.blank?'wa':'ok','cadastros em branco')
     +b('trib','Tribunais',val('trib',nt?`${nt-c.tbadN}<small>/${nt}</small>`:null),c.tbad?'ba':nt?'ok':'mu',c.tbad?`${c.tbadN} fora do ar`:nt?'todos online':'sem configuração')
-    +b('ssl','Certificado',val('ssl',c.minssl!=null?`${c.minssl}<small> dias</small>`:c.sslErr?'erro':S.ssl!==undefined?'—':null),c.minssl!=null?sslK(c.minssl):'mu',c.minssl!=null?(c.minssl<SSL_ALERT?'renovar agora':'para renovação'):c.sslErr?'falha na verificação':'URL não monitorada');
+    +b('ssl','Certificado',val('ssl',c.minssl!=null?`${c.minssl}<small> dias</small>`:c.sslErr?'erro':S.ssl!==undefined?'—':null),c.minssl!=null?sslK(c.minssl):'mu',c.minssl!=null?(c.minssl<SSL_ALERT?'renovar agora':'para renovação'):c.sslErr?'falha na verificação':'URL não monitorada')
+    +ckTabBtn(c,b);
 }
+function ckTabBtn(c,b){
+  if(!c.ck)return b('chk','Checklist',val('chk',S.chk?'—':null),'mu','não monitorado');
+  const o=c.ckP,PA=perA(),PB=perB(),single=PA===PB,TD=isoD(new Date());
+  if(!o.exp&&!o.wait)return b('chk','Checklist','—','mu',single&&isWE(PA)?'fim de semana':`sem checklist ${single?'no dia':'no período'}`);
+  const sub=o.bad?`${o.bad} não feito${o.bad>1?'s':''} ${perWord()}`:!o.exp?'aguardando abertura':o.done===o.exp?(single?'feito':'todos feitos'):`${o.exp-o.done} pendente${o.exp-o.done>1?'s':''}`;
+  return b('chk','Checklist',o.exp?`${o.done}<small>/${o.exp}</small>`:'—',o.bad?'ba':o.done<o.exp?'wa':o.exp?'ok':'mu',sub)}
 function paintDrawerHead(L){
   const c=findCur(L);
   if(!c){$('#dt').textContent=cur||'';return}
   const[h,hl]=SEV[c.sev],t=$('#dtype');
   t.textContent=c.type==='OUT'?'—':c.type;t.className='uf '+c.type;
   $('#dt').textContent=c.name;
-  setHTML('#dmeta',`<span class="health ${h}">${hl}</span><span><code></code></span><span>Período: <b>${esc(perTxt())}</b></span>${c.msg?`<span class="msg c-ba">${esc(c.msg)}</span>`:''}`);
+  setHTML('#dmeta',`<span class="health ${h}">${hl}</span><span>Período: <b>${esc(perTxt())}</b></span>${c.msg?`<span class="msg c-ba">${esc(c.msg)}</span>`:''}`);
   setHTML('#tabs',tabsHTML(c));
 }
 function open(p,t){
@@ -633,6 +782,48 @@ function renderTribTab(L){
 <span class="tm">HTTP ${esc(t.code??'—')}${t.cliente?' · '+esc(t.cliente):''}</span>${t.error?`<div class="te">${esc(t.error)}</div>`:''}
 ${/^https?:\/\//i.test(t.url||'')?`<a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer">Abrir endpoint de teste ↗</a>`:''}</div>`}).join('')}</div>`
     :'<p class="empty">Nenhum tribunal configurado para este cliente.<br><small>Adicione um item com <code>"cliente": "'+esc(c.core)+'"</code> no TRIBUNAIS_CONFIG.</small></p>')}
+let ckView={range:'per',st:'all'};
+function renderChkTab(L){
+  const c=findCur(L),body=$('#body'),sub=$('#sub');
+  if(!c){setHTML(body,'<p class="empty">Cliente não encontrado.</p>');return}
+  if(S.err.chk&&!S.chk){sub.textContent='';setHTML(body,`<p class="empty c-ba">Erro ao carregar os checklists: ${esc(S.em.chk||'erro')}<br><button class="btn sm" data-retry="chk">Tentar novamente</button></p>`);return}
+  if(S.chk===undefined){sub.textContent='Consultando…';setHTML(body,'<p class="empty">Carregando…</p>');return}
+  if(!c.ck){sub.textContent='';setHTML(body,'<p class="empty">Este cliente não aparece na planilha de checklists.<br><small>Os nomes da planilha que não casaram com nenhum card estão em “Itens sem cliente associado”, no fim da página.</small></p>');return}
+  const k=c.ck,TD=isoD(new Date()),min=CKM.min||TD;
+  let end=ckView.range==='per'?perB():TD;if(end>TD)end=TD;
+  let start=ckView.range==='per'?perA():ckView.range==='all'?min:addD(TD,-(ckView.range-1));if(start<min)start=min;if(start>end)start=end;
+  const days=[];for(let d=start;d<=end;d=addD(d,1))if(!isWE(d)||k.by.has(d))days.push(d);
+  const items=days.flatMap(iso=>['M','T'].map(sh=>{const rec=(k.by.get(iso)||{})[sh]||null;return{iso,sh,rec,st:ckSt(rec,iso,sh)}}));
+  const n=s=>items.filter(x=>x.st===s).length,cnt={ok:n('ok'),late:n('late'),open:n('open'),bad:n('bad'),none:n('none'),wait:n('wait')};
+  const tot=cnt.ok+cnt.late+cnt.open+cnt.bad+cnt.none,done=cnt.ok+cnt.late,pct=tot?Math.round(done/tot*100):0;
+  const pc=v=>tot?(v/tot*100)+'%':'0';
+  sub.textContent=`${days.length} dia${days.length===1?'':'s'} úteis · ${start===end?fmtDM(start):fmtDM(start)+' a '+fmtDM(end)} · escala: manhã ${escOf(k,'M')||'—'} · tarde ${escOf(k,'T')||'—'}`;
+  const ranges=[['per','Período do painel'],[7,'7 dias'],[30,'30 dias'],['all','Tudo']];
+  const chips=[['all','Todos',tot],['ok','Feitos no dia',cnt.ok],['late','Com atraso',cnt.late],['bad','Não feitos',cnt.bad],['open','Em aberto',cnt.open],['none','Sem chamado',cnt.none]]
+    .filter(([s,,v])=>s==='all'||s==='ok'||s==='bad'||v).map(([s,l,v])=>`<button class="chip" data-cks="${s}" aria-pressed="${ckView.st===s}">${l} <b>${v}</b></button>`).join('');
+  // calendário: colunas = semanas, linhas = seg..sex, metade de cima = manhã, de baixo = tarde
+  let w=start;while(wdOf(w)!==1)w=addD(w,-1);
+  let heat='';
+  for(;w<=end;w=addD(w,7)){
+    const lab=Number(w.slice(8,10))<=7||w<=start&&addD(w,7)>start?MES[Number(w.slice(5,7))-1]:'';
+    heat+=`<span class="ckh-m">${lab}</span>`;
+    for(let i=0;i<5;i++){const d=addD(w,i);
+      if(d<start||d>end){heat+='<span class="hc off"></span>';continue}
+      const r=k.by.get(d)||{},m=ckSt(r.M,d,'M'),t=ckSt(r.T,d,'T');
+      heat+=`<button class="hc" data-ckday="${d}" title="${esc(fmtDM(d)+' '+WDS[wdOf(d)]+' · manhã: '+CKL[m].toLowerCase()+' · tarde: '+CKL[t].toLowerCase())}"><b class="${m}"></b><b class="${t}"></b></button>`}}
+  const cell=x=>{const r=x.rec,tec=r&&r.tecnico?esc(r.tecnico):escOf(k,x.sh)?'escala: '+esc(escOf(k,x.sh)):'';
+    const extra=r?(r.feito?`solução ${esc(fmtSol(r.solucao,x.iso))}`:`aberto ${esc(r.aberto)}`):'';
+    return`<td><span class="st ${CKC[x.st]}">${CKL[x.st]}</span>${r?`<a class="tk" href="${TICKET_URL}${encodeURIComponent(r.id)}" target="_blank" rel="noopener" title="Abrir o chamado no GLPI">#${esc(r.id)} ↗</a>`:''}${tec||extra?`<span class="ckd">${[tec,extra].filter(Boolean).join(' · ')}</span>`:''}</td>`};
+  const rows=days.slice().reverse().map(iso=>{const it=items.filter(x=>x.iso===iso);
+    if(ckView.st!=='all'&&!it.some(x=>x.st===ckView.st))return'';
+    return`<tr id="ck-${iso}"><td class="n">${fmtDM(iso)} <span class="c-mu">${WDS[wdOf(iso)]}</span>${iso===TD?' <span class="st mu">hoje</span>':''}</td>${cell(it[0])}${cell(it[1])}</tr>`}).join('');
+  setHTML(body,`<div class="cktools"><div class="seg" role="group" aria-label="Período do histórico">${ranges.map(([v,l])=>`<button data-ckr="${v}" aria-pressed="${String(ckView.range)===String(v)}">${l}</button>`).join('')}</div><div class="chips">${chips}</div></div>
+    <div class="cksum"><div><div class="big c-${pct>=90?'ok':pct>=70?'wa':'ba'}">${pct}<small>%</small></div><div class="cap">${done} de ${tot} feitos${cnt.late?` · ${cnt.late} com atraso`:''}</div></div>
+      <div><div class="bar"><i style="width:${pc(cnt.ok)};background:var(--ok)"></i><i style="width:${pc(cnt.late+cnt.open)};background:var(--wait)"></i><i style="width:${pc(cnt.bad)};background:var(--bad)"></i><i style="width:${pc(cnt.none)};background:var(--line)"></i></div>
+      <div class="lg"><span><i class="ok"></i>Feito no dia<b>${cnt.ok}</b></span><span><i class="late"></i>Feito com atraso<b>${cnt.late}</b></span>${cnt.open?`<span><i class="late"></i>Em aberto<b>${cnt.open}</b></span>`:''}<span><i class="bad"></i>Não feito<b>${cnt.bad}</b></span><span><i class="none"></i>Sem chamado<b>${cnt.none}</b></span></div></div></div>
+    <div class="ckheat"><div class="ckh-days"><span></span><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span></div><div class="ckh-grid">${heat}</div></div>
+    <div class="note" style="font-size:12px;color:var(--muted)">Cada quadrado é um dia útil: metade de cima = manhã (08h), metade de baixo = tarde (15h). Clique para ir ao dia na tabela. “Com atraso” = chamado fechado em outro dia. Dias sem checklist para nenhum cliente (feriados) não entram na conta.</div>
+    ${rows?`<div class="tw"><table><thead><tr><th>Dia</th><th>Manhã · 08h</th><th>Tarde · 15h</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="empty">Nenhum checklist com esse filtro no período.</p>'}`)}
 function renderSslTab(L){
   const c=findCur(L),body=$('#body'),sub=$('#sub');
   if(!c){setHTML(body,'<p class="empty">Cliente não encontrado.</p>');return}
@@ -654,6 +845,7 @@ async function load(t){
   paintDrawerHead();
   if(t==='trib'){renderTribTab();return}
   if(t==='ssl'){renderSslTab();return}
+  if(t==='chk'){renderChkTab();return}
   const body=$('#body'),sub=$('#sub'),u=DT[t](cur);
   if(!u){sub.textContent='';setHTML(body,'<p class="empty">Detalhamento indisponível.</p>');return}
   const key=u,hit=DC.get(key);let d;
@@ -701,7 +893,7 @@ let ac;function alerta(n){toast('🔴 Rotina com problema: '+n.slice(0,4).join('
   try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.setValueAtTime(.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.6);o.start();o.stop(ac.currentTime+.6)}catch(_){}}
 function toast(m,k='',ms=5000){const d=document.createElement('div');d.className=k;d.textContent=m;$('#toast').appendChild(d);setTimeout(()=>d.remove(),ms)}
 const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-function applyPer(a,b){
+function applyPer(a,b){perDay=ymd(new Date());
   a?(sessionStorage.setItem('spa_inicio',ymd(a)),sessionStorage.setItem('spa_fim',ymd(b))):(sessionStorage.removeItem('spa_inicio'),sessionStorage.removeItem('spa_fim'));
   DC.clear();['resumo','blank'].forEach(k=>{S[k]=undefined;S.err[k]=0});render();run('resumo');run('blank')}
 function setPer(v){P=v;const n=new Date();let a=null,b=n;
@@ -727,11 +919,16 @@ $('#tipo').onclick=e=>{const b=e.target.closest('button[data-v]');if(!b)return;T
 $('#kpis').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;F=F===b.dataset.f?'ALL':b.dataset.f;render()};
 $('#sort').value=SORTS[SORT]?SORT:'sev';
 $('#sort').onchange=e=>{SORT=e.target.value;lsSet('spa:sort',SORT);render()};
-$('#grid').onclick=e=>{const c=e.target.closest('.cc[data-p]');c&&open(c.dataset.p)};
-$('#grid').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.cc[data-p]');if(c){e.preventDefault();open(c.dataset.p)}}};
+$('#grid').onclick=e=>{if(e.target.closest('a'))return;const c=e.target.closest('.cc[data-p]');c&&open(c.dataset.p)};
+$('#grid').onkeydown=e=>{if(e.target.closest('a'))return;if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.cc[data-p]');if(c){e.preventDefault();open(c.dataset.p)}}};
 $('#alertPills').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-more')){alertsAll=!alertsAll;render();return}open(b.dataset.open,b.dataset.tab)};
 $('#tabs').onclick=e=>{const b=e.target.closest('button[data-t]');b&&cur&&load(b.dataset.t)};
-$('#body').onclick=e=>{if(e.target.id==='retry'){DC.delete(DT[tab](cur));load(tab)}};
+$('#body').onclick=e=>{
+  if(e.target.id==='retry'){DC.delete(DT[tab](cur));load(tab);return}
+  const r=e.target.closest('[data-ckr]');if(r){ckView.range=['all','per'].includes(r.dataset.ckr)?r.dataset.ckr:Number(r.dataset.ckr);renderChkTab();return}
+  const s=e.target.closest('[data-cks]');if(s){ckView.st=s.dataset.cks;renderChkTab();return}
+  const d=e.target.closest('[data-ckday]');if(d){if(ckView.st!=='all'){ckView.st='all';renderChkTab()}
+    const row=document.getElementById('ck-'+d.dataset.ckday);if(row){row.scrollIntoView({block:'center',behavior:'smooth'});row.classList.remove('flash');void row.offsetWidth;row.classList.add('flash')}}};
 $('#ov').onclick=$('#x').onclick=close;
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-clear]')){F='ALL';T='ALL';Q='';$('#q').value='';render();return}
@@ -750,6 +947,8 @@ const clk=$('#clock');
 const tickClock=()=>{clk.textContent=new Date().toLocaleTimeString('pt-BR')};
 tickClock();setInterval(tickClock,1000);
 setInterval(()=>{
+  // virada do dia: Hoje / 7 dias / 30 dias / Mês / Mês anterior acompanham a data atual
+  if(P!=='custom'&&perDay&&perDay!==ymd(new Date())){$('#d1').max=$('#d2').max=ymd(new Date());setPer(P)}
   if(document.hidden)return;
   const n=Date.now();
   for(const k in SRC){
@@ -759,7 +958,8 @@ setInterval(()=>{
   }
 },15000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){const n=Date.now();for(const k in SRC)if(n-(S.t[k]||0)>SRC[k].every*1000)run(k)}});
-sessionStorage.removeItem('spa_inicio');sessionStorage.removeItem('spa_fim');
+// padrão: sempre hoje
+{const t=ymd(new Date());sessionStorage.setItem('spa_inicio',t);sessionStorage.setItem('spa_fim',t);P='hoje';perDay=t;$('#d1').value=$('#d2').value=t}
 
 /* ─── SSE (tempo real) ─── */
 const setConn=(cls,txt)=>{$('#conn').innerHTML=`<i class="${cls}"></i>${txt}`};
