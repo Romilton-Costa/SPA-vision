@@ -283,6 +283,41 @@ td .tk:hover{color:var(--accent)}
 tr.flash td{animation:flash 1.6s ease-out}
 @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
 
+/* Relatório (modal) */
+body.mopen{overflow:hidden}
+.modal{position:fixed;inset:0;z-index:50;background:var(--scrim);backdrop-filter:blur(4px);display:grid;place-items:center;padding:16px}
+.modal[hidden]{display:none}
+.mbox{width:min(780px,100%);max-height:calc(100vh - 32px);background:var(--bg);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.mh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--line-soft)}
+.mh h2{font-family:var(--display);font-size:20px;margin-top:2px}
+.mb{overflow:auto;padding:14px 20px;display:flex;flex-direction:column;gap:16px}
+.ms h4{font:600 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.ms .note{margin-top:8px;font-size:12px;color:var(--muted)}
+.rp-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.rp-tools .field{flex:1;min-width:180px}
+.rplist{margin-top:8px;max-height:230px;overflow:auto;border:1px solid var(--line-soft);border-radius:10px;padding:4px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px}
+.rplist label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:13px;min-width:0}
+.rplist label:hover{background:var(--surface)}
+.rplist input{accent-color:var(--accent);width:15px;height:15px;flex:none}
+.rplist .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rplist .uf{margin:0}
+.rplist .health{font-size:9px;padding:2px 6px}
+.rp-per{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rp-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rp-opts label{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px;cursor:pointer}
+.rp-opts label:has(input:checked){border-color:var(--accent)}
+.rp-opts label:has(input:disabled:not(:checked)){opacity:.5;cursor:not-allowed}
+.rp-opts label.sub{margin-left:18px}
+.rp-opts input{accent-color:var(--accent);width:15px;height:15px;margin-top:2px;flex:none}
+.rp-opts b{display:block;font-size:13px;font-weight:600}
+.rp-opts small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.mf{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.mf .note{flex:1;min-width:200px;font-size:12.5px;color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#0D121C;font-weight:600}
+.btn.pri:hover{filter:brightness(1.1)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+@media (max-width:620px){.rp-opts{grid-template-columns:1fr}.rp-opts label.sub{margin-left:0}}
+
 /* Toasts */
 #toast{position:fixed;right:24px;bottom:24px;display:flex;flex-direction:column;gap:8px;z-index:60;max-width:min(420px,calc(100vw - 32px))}
 #toast div{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:12px 16px;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -322,6 +357,10 @@ tr.flash td{animation:flash 1.6s ease-out}
         <label for="d2">até</label><input class="field" type="date" id="d2" aria-label="Data final">
         <button class="go" id="dgo" type="button">Aplicar</button>
       </div>
+      <button class="btn" id="rpOpen" title="Gerar relatório em PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+        Gerar relatório
+      </button>
       <button class="btn" id="rf" title="Atualizar tudo">
         <svg id="rfi" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         Atualizar
@@ -372,12 +411,46 @@ tr.flash td{animation:flash 1.6s ease-out}
       <h2 id="dt"></h2>
       <div class="meta" id="dmeta"></div>
     </div></div>
-    <button class="x" id="x" aria-label="Fechar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div style="display:flex;gap:8px;flex:none"><button class="btn" id="rpOne" title="Relatório em PDF deste cliente" style="height:38px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>Relatório</button>
+    <button class="x" id="x" aria-label="Fechar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   </div>
   <div class="dk" id="tabs" role="tablist"></div>
   <div id="sub"></div>
   <div id="body"></div>
 </aside>
+<div class="modal" id="rp" role="dialog" aria-modal="true" aria-labelledby="rpT" hidden>
+  <div class="mbox">
+    <div class="mh"><div><div class="eyebrow">Relatório em PDF</div><h2 id="rpT">Gerar relatório</h2></div>
+      <button class="x" id="rpX" aria-label="Fechar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="mb">
+      <section class="ms"><h4>Clientes</h4>
+        <div class="seg" id="rpScope" role="group" aria-label="Clientes do relatório"><button data-s="all">Todos os clientes</button><button data-s="sel">Escolher cliente ou grupo</button></div>
+        <div id="rpSel" hidden>
+          <div class="rp-tools"><input class="field" id="rpQ" type="search" placeholder="Buscar cliente…" aria-label="Buscar cliente">
+            <div class="chips" id="rpQuick"><button class="chip" data-k="PGM">+ PGM</button><button class="chip" data-k="PGE">+ PGE</button><button class="chip" data-k="OUT">+ Outros</button><button class="chip" data-k="crit">+ Críticos</button><button class="chip" data-k="all">Marcar todos</button><button class="chip clear" data-k="none">Limpar</button></div></div>
+          <div class="rplist" id="rpList"></div>
+        </div>
+        <div class="note" id="rpCount"></div>
+      </section>
+      <section class="ms"><h4>Período</h4>
+        <div class="rp-per"><div class="seg" id="rpPer" role="group" aria-label="Período do relatório"><button data-v="hoje">Hoje</button><button data-v="semana">7 dias</button><button data-v="30d">30 dias</button><button data-v="mes">Mês</button><button data-v="mesant">Mês anterior</button></div>
+        <div class="rng" id="rpRng" data-on="false"><label for="rpD1">De</label><input class="field" type="date" id="rpD1"><label for="rpD2">até</label><input class="field" type="date" id="rpD2"></div></div>
+      </section>
+      <section class="ms"><h4>Conteúdo</h4>
+        <div class="rp-opts" id="rpOpts">
+          <label class="on"><input type="checkbox" checked disabled><span><b>Resumo executivo e indicadores</b><small>status geral, números do período</small></span></label>
+          <label><input type="checkbox" id="rpO-risk"><span><b>Riscos, pendências e próximos passos</b><small>impacto, plano de ação, responsável e prazo sugeridos</small></span></label>
+          <label><input type="checkbox" id="rpO-overview"><span><b>Visão geral por cliente</b><small>uma linha por cliente (com 2 ou mais clientes)</small></span></label>
+          <label><input type="checkbox" id="rpO-detail"><span><b>Detalhamento por cliente</b><small>indicadores, pontos de atenção, tribunais, certificados</small></span></label>
+          <label class="sub"><input type="checkbox" id="rpO-lists"><span><b>Listas de processos e rotinas</b><small id="rpListsNote"></small></span></label>
+          <label class="sub"><input type="checkbox" id="rpO-chkdays"><span><b>Checklists dia a dia</b><small id="rpChkNote">manhã e tarde, com chamado e técnico</small></span></label>
+        </div>
+      </section>
+    </div>
+    <div class="mf"><span class="note" id="rpMsg" role="status"></span><button class="btn" id="rpCancel">Cancelar</button><button class="btn pri" id="rpGo">Gerar relatório</button></div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -453,7 +526,13 @@ const wdOf=iso=>{const[y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d
 const isWE=iso=>{const g=wdOf(iso);return g===0||g===6};
 const fmtDM=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
 // Identidade do cliente para casar card ↔ planilha: PGE/PG pelo estado; demais pelas palavras do nome
+// Clientes com nomes diferentes em cada fonte (host, planilha, card)
+const SYN=[['pbprev',/pbprev|previdenciadaparaiba|previdenciaparaiba|paraibaprev/],['saj',/(^|pgm)saj$|santoantoniodejesus/]];
+const synOf=s=>{const n=norm(s);const hit=SYN.find(([,re])=>re.test(n));return hit?hit[0]:null};
+// Clientes que não entram na conta de expedientes não cadastrados
+const PEND_OFF=/^cni$/;
 function nameKey(name){
+  const sy=synOf(String(name||'').replace(/\/[A-Z]{2}\s*$/,''));if(sy)return{pg:false,type:'OUT',syn:sy,words:new Set(['~'+sy])};
   let n=String(name||'');const ufm=n.match(/\/([A-Z]{2})\s*$/);if(ufm)n=n.slice(0,ufm.index);
   const words=n.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   if(/^\s*pge?\b/i.test(name)){
@@ -463,6 +542,7 @@ function nameKey(name){
     return{pg:true,type:'PGE',words:new Set([uf?'uf:'+uf:j])}}
   return{pg:false,type:/^\s*pgm/i.test(name)?'PGM':'OUT',words:new Set(words.filter(w=>!STOPW.has(w)))}}
 function keyScore(a,b){ // a = planilha, b = card
+  if(a.syn||b.syn)return a.syn&&a.syn===b.syn?1:0;
   if(a.pg!==b.pg||(a.type==='OUT'&&b.type==='PGM'))return 0;
   let i=0;for(const w of a.words)if(b.words.has(w))i++;
   const u=a.words.size+b.words.size-i;return u?i/u:0}
@@ -504,14 +584,16 @@ function build(){
   (S.rotina||[]).forEach(r=>{const c=get(r.prefix,r.name);if(!c)return;c.rot=r.status;c.rtot=r.total;if(r.error_message)c.msg=r.error_message});
   (S.blank||[]).forEach(r=>{const c=get(r.prefixo,r.instancia);if(!c)return;c.blank=r.total;c.bst=r.status});
   const L=[...m.values()],used=new Set();
-  L.forEach(c=>{c.core=core(c.name);c.type=/^pge/i.test(c.name)?'PGE':/^pgm/i.test(c.name)?'PGM':'OUT';c.hay=norm(c.name+c.p);
+  L.forEach(c=>{c.core=core(c.name);c.type=/^pge/i.test(c.name)?'PGE':/^pgm/i.test(c.name)?'PGM':'OUT';c.hay=norm(c.name+c.p);c.pendOff=PEND_OFF.test(c.core);
     c.trb=tribDe(c);c.trb.forEach(t=>used.add(t));c.tbadN=c.trb.filter(t=>t.status!=='OK').length;c.tbad=c.tbadN>0});
   const find=t=>{t=norm(t);for(const a in ALIASES)if(t.includes(a)&&m.has(ALIASES[a]))return m.get(ALIASES[a]);
     let b=null;for(const c of L)if(c.core.length>=3&&t.includes(c.core)&&(!b||c.core.length>b.core.length))b=c;return b};
   const orf={ssl:[],trib:(S.trib||[]).filter(t=>!used.has(t))};
   (S.cpu||[]).forEach(x=>{const c=find(x.name);if(c&&c.cpu==null)c.cpu=x.cpu_usage});
   // certificado → card: 1) nome do cliente no host  2) spa.pge.UF.gov.br → PGE do estado  3) subdomínio contido no nome do cliente
-  const findHost=h=>{const raw=String(h||'').toLowerCase(),c1=find(raw);if(c1)return c1;
+  const findHost=h=>{const raw=String(h||'').toLowerCase(),sy=synOf(raw.split('.')[0]);
+    if(sy){const hit=L.find(c=>synOf(c.name)===sy);if(hit)return hit}
+    const c1=find(raw);if(c1)return c1;
     const g=raw.match(/(?:^|\.)pge?\.([a-z]{2})\.gov\.br$/);
     if(g){const uf=g[1],nm=UFN[uf],pg=L.filter(c=>/^pg/i.test(c.name)&&!/^pgm/i.test(c.name));
       const hit=pg.find(c=>nm&&c.core.includes(nm))||pg.find(c=>norm(c.name).endsWith(uf));if(hit)return hit}
@@ -530,7 +612,7 @@ function build(){
     c.ckT=['M','T'].map(sh=>({sh,rec:d[sh]||null,st:ckSt(d[sh]||null,TD,sh)}));c.ckBad=c.ckT.filter(x=>x.st==='bad').length;
     c.ckP=ckSum(c.ck,PA,PB)});
   L.forEach(c=>{const r=String(c.rot||'').toUpperCase();c.rk=r==='OK'?'OK':r;c.rbad=RB.has(r);const so=c.ssl.filter(sslNum);c.minssl=so.length?Math.min(...so.map(s=>s.dias_restantes)):null;c.sslErr=c.ssl.length>0&&!so.length;
-    c.sev=(c.pst&&c.pst!=='ok')||c.rbad||c.tbad||(c.minssl!==null&&c.minssl<SSL_ALERT)?3:(RW.has(r)||c.blank>0||c.cpu>=85||c.sslErr||c.ckBad)?2:c.pend>0?1:0});
+    c.sev=(c.pst&&c.pst!=='ok')||c.rbad||c.tbad||(c.minssl!==null&&c.minssl<SSL_ALERT)?3:(RW.has(r)||c.blank>0||c.cpu>=85||c.sslErr||c.ckBad)?2:c.pend>0&&!c.pendOff?1:0});
   L.sort(SORTS.sev);
   return{L,orf}}
 const SORTS={
@@ -543,7 +625,7 @@ const SORTS={
 };
 const FIL={
   ALL:()=>1,
-  pend:c=>(c.pend||0)>0,
+  pend:c=>!c.pendOff&&(c.pend||0)>0,
   rot:c=>c.rbad||RW.has(c.rk),
   blank:c=>c.blank>0,
   trib:c=>c.tbad,
@@ -571,7 +653,7 @@ function paint(){
   if(cur&&document.body.classList.contains('open')){paintDrawerHead(L);if(tab==='trib')renderTribTab(L);else if(tab==='ssl')renderSslTab(L);else if(tab==='chk')renderChkTab(L)}
 }
 function paintHeader(L){
-  $('#subtitle').textContent=L.length?`${L.length} clientes monitorados · período: ${perTxt()}`:ld('resumo')?'Carregando clientes…':'Nenhum cliente carregado';
+  $('#subtitle').textContent=L.length?`${L.length} ${L.length===1?'cliente monitorado':'clientes monitorados'} · período: ${perTxt()}`:ld('resumo')?'Carregando clientes…':'Nenhum cliente carregado';
   setHTML('#src',Object.keys(SRC).map(k=>`<span title="${esc(S.err[k]?(S.em[k]||'falha'):S[k]!==undefined?'ok':'carregando')}"><i class="${S.err[k]?'er':S[k]!==undefined?'ok':''}"></i>${LBL[k]}</span>`).join(''));
   const ts=Math.max(0,...Object.values(S.t));
   $('#lastSync').textContent=ts?new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
@@ -601,7 +683,7 @@ function paintAlerts(L){
 }
 function paintKpis(L,orf){
   const sum=f=>L.reduce((s,c)=>s+(f(c)||0),0),cnt=f=>L.filter(f).length;
-  const tot=sum(c=>c.pend),bl=sum(c=>c.blank);
+  const tot=sum(c=>c.pendOff?0:c.pend),bl=sum(c=>c.blank);
   const rBad=cnt(c=>c.rbad),rWarn=cnt(c=>RW.has(c.rk)),rOk=cnt(c=>c.rk==='OK'),rAll=rBad+rWarn+rOk;
   const tAll=(S.trib||[]).length,tOff=(S.trib||[]).filter(t=>t.status!=='OK').length;
   const sAll=S.ssl||[],sNum=sAll.filter(sslNum),sAl=sNum.filter(x=>x.dias_restantes<SSL_ALERT).length,sMin=sNum.length?Math.min(...sNum.map(x=>x.dias_restantes)):null,sErr=sAll.length-sNum.length;
@@ -669,7 +751,7 @@ function why(c){const w=[],rl=rotOf(c)[0];
   if(c.ckBad)w.push(['wa',c.ckBad>1?'Checklists de hoje não feitos':`Checklist da ${SHN[c.ckT.find(x=>x.st==='bad').sh].toLowerCase()} não feito`]);
   if(c.sslErr)w.push(['wa','Falha ao verificar o certificado']);
   if(c.blank>0)w.push(['wa',`${nf(c.blank)} em branco`]);
-  if(c.pend>0)w.push(['ac',`${nf(c.pend)} ${c.pend>1?'expedientes não cadastrados':'expediente não cadastrado'}`]);
+  if(c.pend>0&&!c.pendOff)w.push(['ac',`${nf(c.pend)} ${c.pend>1?'expedientes não cadastrados':'expediente não cadastrado'}`]);
   if(!w.length)return['ok','Tudo em dia'];
   return[w[0][0],w.slice(0,2).map(x=>x[1]).join(' · ')+(w.length>2?` · +${w.length-2}`:'')]}
 function ckRow(c){
@@ -695,7 +777,7 @@ function card(c){
   return`<article class="cc ${h}" role="button" tabindex="0" data-p="${esc(c.p)}" aria-label="${esc(c.name)}: abrir detalhes">
 <div class="cc-h"><span class="uf ${c.type}">${c.type==='OUT'?'—':c.type}</span><div class="nm"><h3 title="${esc(c.name)}">${esc(c.name)}</h3>${nt?`<div class="t">${c.tbad?`<span class="c-ba">${c.tbadN}/${nt} tribuna${nt>1?'is':'l'} fora</span>`:`${nt} tribuna${nt>1?'is':'l'}`}</div>`:''}</div><span class="health ${h}">${hl}</span></div>
 <div class="tiles">
-${tile('resumo',err?'erro':c.pend!=null?nf(c.pend):null,err?'ba':c.pend?'wa':'ok','Expedientes não cadastrados','Expedientes não cadastrados')}
+${tile('resumo',err?'erro':c.pend!=null?nf(c.pend):null,err?'ba':c.pendOff?'mu':c.pend?'wa':'ok','Expedientes não cadastrados',c.pendOff?'Expedientes não cadastrados · este cliente não entra na conta do painel':'Expedientes não cadastrados')}
 ${tile('rotina',rl,rc,'Rotina',(c.msg||'Status da rotina')+(c.rtot?` · total: ${c.rtot}`:''),1)}
 ${tile('blank',c.blank!=null?nf(c.blank):null,c.blank?'wa':'ok','Branco','Cadastros em branco')}
 ${tile('ssl',sslv,sslc,'SSL',c.ssl.length?'Dias para renovação · '+c.ssl.map(s=>`${s.host}: ${sslNum(s)?s.dias_restantes+' dias':'sem resposta'}`).join(' · '):'URL sem certificado monitorado')}
@@ -888,6 +970,292 @@ async function load(t){
   }
 }
 
+/* ───────── relatório em PDF ───────── */
+const REPORT_DETAIL_MAX=15; // acima disso o relatório traz o resumo por cliente, sem as listas de processos (limite de consultas da API)
+const PDF_LIBS=['https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'];
+const PDF_LOGO='data:image/png;base64,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';
+const loadScript=u=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>ko(new Error('não foi possível carregar a biblioteca de PDF ('+u.split('/npm/')[1]+')'));document.head.appendChild(s)});
+async function pdfLibs(){
+  if(!(window.jspdf&&window.jspdf.jsPDF))await loadScript(PDF_LIBS[0]);
+  if(!window.jspdf.jsPDF.API.autoTable)await loadScript(PDF_LIBS[1]);
+  return window.jspdf.jsPDF}
+const fBR=iso=>iso?iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4):'—';
+const fDT=v=>{if(v==null||v==='')return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})};
+const busDays=(a,b)=>{let n=0;for(let d=a;d<=b;d=addD(d,1))if(!isWE(d)&&!(CKM.min&&d>=CKM.min&&d<isoD(new Date())&&CKM.all.size&&!CKM.all.has(d)))n++;return n};
+const safe=async f=>{try{return await f()}catch(e){return{__err:e&&e.message||'erro'}}};
+const pct=(a,b)=>!b?0:a<b?Math.min(99,Math.round(a/b*100)):100; // só mostra 100% quando está tudo feito
+const pl=(n,um,varios)=>`${nf(n)} ${n===1?um:varios}`;
+
+// ── estado do modal
+const RP={scope:'all',sel:new Set(),q:'',per:'hoje',a:null,b:null,opt:{risk:true,overview:true,detail:true,lists:true,chkdays:true},busy:false};
+function rpRange(v){const t=isoD(new Date());
+  if(v==='hoje')return[t,t];if(v==='semana')return[addD(t,-6),t];if(v==='30d')return[addD(t,-29),t];
+  if(v==='mes')return[t.slice(0,8)+'01',t];
+  if(v==='mesant'){const d=new Date();const a=new Date(d.getFullYear(),d.getMonth()-1,1),b=new Date(d.getFullYear(),d.getMonth(),0);return[isoD(a),isoD(b)]}
+  return null}
+function openReport(only){
+  const{L}=build();RP.L=L;
+  if(only){RP.scope='sel';RP.sel=new Set([only])}
+  RP.per=P;RP.a=perA();RP.b=perB();RP.q='';
+  $('#rpQ').value='';$('#rpMsg').textContent='';$('#rpMsg').className='note';
+  paintReport();$('#rp').hidden=false;document.body.classList.add('mopen');$('#rpGo').focus()}
+function closeReport(){if(RP.busy)return;$('#rp').hidden=true;document.body.classList.remove('mopen')}
+function rpClients(){const L=RP.L||build().L;return RP.scope==='all'?L:L.filter(c=>RP.sel.has(c.p))}
+function paintReport(){
+  const L=(RP.L||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),q=norm(RP.q);
+  $$('#rpScope button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===RP.scope));
+  $('#rpSel').hidden=RP.scope!=='sel';
+  setHTML('#rpList',L.filter(c=>!q||c.hay.includes(q)).map(c=>`<label><input type="checkbox" value="${esc(c.p)}" ${RP.sel.has(c.p)?'checked':''}><span class="uf ${c.type}">${c.type==='OUT'?'—':c.type}</span><span class="nm">${esc(c.name)}</span><span class="health ${SEV[c.sev][0]}">${SEV[c.sev][1]}</span></label>`).join('')||'<p class="note">Nenhum cliente encontrado.</p>');
+  const n=rpClients().length;
+  $('#rpCount').textContent=RP.scope==='all'?`${n} clientes no relatório`:n?`${n} cliente${n>1?'s':''} selecionado${n>1?'s':''}`:'Nenhum cliente selecionado';
+  $$('#rpPer button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===RP.per));
+  $('#rpD1').value=RP.a;$('#rpD2').value=RP.b;$('#rpD1').max=$('#rpD2').max=isoD(new Date());
+  $('#rpRng').dataset.on=String(RP.per==='custom');
+  for(const k in RP.opt){const i=$('#rpO-'+k);if(i)i.checked=RP.opt[k]}
+  const tooMany=n>REPORT_DETAIL_MAX;
+  $('#rpO-lists').disabled=!RP.opt.detail||tooMany;$('#rpO-chkdays').disabled=!RP.opt.detail||tooMany;
+  $('#rpChkNote').textContent=tooMany?`disponível até ${REPORT_DETAIL_MAX} clientes`:'manhã e tarde, com chamado e técnico';
+  $('#rpListsNote').textContent=tooMany?`disponível até ${REPORT_DETAIL_MAX} clientes (limite de consultas da API)`:'números dos processos de cada cliente';
+  $('#rpGo').disabled=!n||RP.busy;
+}
+
+// ── coleta dos dados do período
+async function reportData(progress){
+  const{L}=build();RP.L=L;
+  const cl=rpClients().slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const a=RP.a,b=RP.b,q=`?dataInicio=${a}&dataFim=${b}`,same=a===perA()&&b===perB(),errs=[];
+  progress('Consultando expedientes e cadastros do período…');
+  let res=same&&S.resumo?S.resumo:null,bl=same&&S.blank?S.blank:null;
+  if(!res){const r=await safe(()=>j('/processos/resumo'+q));if(r&&r.__err){errs.push('expedientes não cadastrados ('+r.__err+')');res=[]}else res=r||[]}
+  if(!bl){const[x,y]=await Promise.allSettled([j('/processos/blank-notices/todos'+q),j('/processos/blank-notices'+q)]);
+    bl=x.status==='fulfilled'&&Array.isArray(x.value)?x.value:[];if(y.status==='fulfilled'&&y.value&&y.value.prefixo)bl.push(y.value);
+    if(x.status!=='fulfilled'&&y.status!=='fulfilled')errs.push('cadastros em branco')}
+  const rm=new Map(res.map(r=>[String(r.prefixo).toUpperCase(),r])),bm=new Map(bl.map(r=>[String(r.prefixo).toUpperCase(),r]));
+  const lists=RP.opt.detail&&RP.opt.lists&&cl.length<=REPORT_DETAIL_MAX,rot=RP.opt.detail&&cl.length<=REPORT_DETAIL_MAX;
+  const out=[];
+  for(let i=0;i<cl.length;i++){const c=cl[i],r=rm.get(c.p),bb=bm.get(c.p);
+    const o={c,pend:r?r.total_pendentes:(same?c.pend:null),pst:r?r.status:c.pst,blank:bb?bb.total:(same?c.blank:null),ck:c.ck?ckSum(c.ck,a,b):null,pendRows:null,blankRows:null,rotRows:null};
+    if(lists||rot)progress(`Consultando detalhes de ${c.name} (${i+1}/${cl.length})…`);
+    if(lists){
+      const d=await safe(()=>j(`/processos/detalhes/${c.p}${q}`,60000));o.pendRows=d&&!d.__err?d.processos||[]:{err:d&&d.__err};
+      if(DT.blank(c.p)){const e=await safe(()=>j(`/processos/blank-notices/todos/${c.p}${q}`,60000));o.blankRows=e&&!e.__err?e.processos||e.rotinas||[]:{err:e&&e.__err}}}
+    if(rot){const d=await safe(()=>j(`/api/rotina/detalhes/${c.p}`,60000));o.rotRows=d&&!d.__err?d.rotinas||d.processos||[]:{err:d&&d.__err}}
+    out.push(o)}
+  return{a,b,cl:out,errs,gen:new Date(),lists,rot}}
+
+// ── pontos de atenção, riscos e pendências (regras)
+const LV={A:'Alto',M:'Médio',B:'Baixo'},LVO={A:0,M:1,B:2};
+const PRAZO={A:'Imediato (até 24h)',M:'Até 3 dias úteis',B:'Próxima revisão'};
+function respOf(o,area){const e=o.c.ck&&o.c.ck.escala;const esc2=e?[e.manha,e.tarde].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' / '):'';
+  return area==='infra'?'Infraestrutura':area==='integ'?'Suporte N2 / Integrações':area==='chk'?(esc2?'Técnico(s) da escala: '+esc2:'Customer Success'):(esc2?'Customer Success ('+esc2+')':'Customer Success')}
+function reasonRec(m){m=norm(m);
+  if(m.includes('naolocalizado'))return'cadastrar os processos no SPA ou revisar a importação automática';
+  if(m.includes('depara'))return'completar a tabela de de-para (classe, comarca ou vara)';
+  if(m.includes('partenaovinculada'))return'revisar o vínculo das partes com a procuradoria';
+  if(m.includes('indisponivel'))return'reprocessar quando o documento estiver disponível no tribunal';
+  if(m.includes('prazo'))return'revisar o tipo de comunicação para o cálculo do prazo';
+  return'tratar a fila de expedientes junto à equipe do cliente'}
+function insights(R){
+  const risks=[];
+  const add=(lv,o,area,desc,imp,acao)=>risks.push({lv,cli:o?o.c.name:'Geral',o,area,desc,imp,acao,resp:o?respOf(o,area):'Coordenação de Suporte',prazo:PRAZO[lv],esc:lv==='A'});
+  for(const o of R.cl){const c=o.c;
+    if(o.pst&&o.pst!=='ok')add('A',o,'integ','Falha ao consultar os expedientes não cadastrados da instância.','O volume real de pendências do cliente não pode ser medido.','Verificar a conexão da instância com a base (Metabase/SPA) e reprocessar a consulta.');
+    if(c.rbad)add('A',o,'integ',`Rotina de consulta de expedientes: ${rotOf(c)[0]}${c.msg?' ('+c.msg+')':''}.`,'Expedientes dos tribunais deixam de ser importados enquanto a rotina não executa.','Verificar credenciais MNI, agendamento e logs da rotina; reexecutar e acompanhar a próxima janela.');
+    else if(RW.has(c.rk))add('M',o,'integ',`Rotina de consulta requer verificação (${rotOf(c)[0]}).`,'Risco de importação parcial de expedientes.','Conferir a última execução e os alertas da rotina.');
+    if(c.tbad){const nm=c.trb.filter(t=>t.status!=='OK').map(t=>t.nome).join(', ');add('A',o,'integ',`${c.tbadN===1?'1 integração com tribunal fora do ar':c.tbadN+' integrações com tribunais fora do ar'}: ${nm}.`,'Movimentações desses tribunais não são consultadas.','Acionar o suporte do tribunal ou revisar a configuração (soap_setting) e testar novamente.')}
+    if(c.minssl!=null&&c.minssl<SSL_ALERT)add('A',o,'infra',`Certificado SSL vence em ${pl(c.minssl,'dia','dias')} (${c.ssl.filter(sslNum).sort((x,y)=>x.dias_restantes-y.dias_restantes)[0].host}).`,'Ao vencer, o acesso dos usuários ao SPA é bloqueado pelo navegador.','Renovar e instalar o certificado antes do vencimento.');
+    else if(c.sslErr)add('M',o,'infra','Não foi possível verificar o certificado SSL da instância.','Vencimento do certificado sem monitoramento.','Verificar se o endereço responde e se o certificado está instalado corretamente.');
+    if(o.pend>0&&!c.pendOff){
+      let top=null;if(Array.isArray(o.pendRows)&&o.pendRows.length){const g={};o.pendRows.forEach(r=>{const k=r.failure_message||'Sem motivo informado';g[k]=(g[k]||0)+1});top=Object.entries(g).sort((x,y)=>y[1]-x[1])[0]}
+      const lv=o.pend>=200?'A':o.pend>=50?'M':'B';
+      const conc=top&&top[1]/o.pendRows.length>=.4?` ${pct(top[1],o.pendRows.length)}% por "${top[0]}".`:'';
+      add(lv,o,'op',`${pl(o.pend,'expediente não cadastrado','expedientes não cadastrados')} no período.${conc}`,'Expedientes sem cadastro podem gerar perda de prazo processual.',conc?'Prioritariamente, '+reasonRec(top[0])+'.':'Tratar a fila de expedientes não cadastrados junto à equipe do cliente.')}
+    if(o.blank>0){let old=0;if(Array.isArray(o.blankRows))old=o.blankRows.filter(r=>r.created_at&&(Date.now()-new Date(r.created_at))/864e5>30).length;
+      add(o.blank>=10?'M':'B',o,'op',`${pl(o.blank,'processo com cadastro em branco','processos com cadastro em branco')}${old?`, ${old} há mais de 30 dias`:''}.`,'Dados incompletos prejudicam distribuição, prazos e relatórios do cliente.','Completar os campos obrigatórios dos processos listados.')}
+    if(o.ck&&o.ck.exp){const k=o.ck;
+      if(k.bad)add(k.bad>=3?'A':'M',o,'chk',`${pl(k.bad,'checklist não feito','checklists não feitos')} no período (${k.done} de ${k.exp} feitos, ${pct(k.done,k.exp)}%).`,'Falhas de monitoramento diário podem não ser detectadas a tempo.','Executar os checklists pendentes e registrar a solução no chamado.');
+      if(k.late&&k.late/k.exp>=.2)add('M',o,'chk',`${pct(k.late,k.exp)}% dos checklists foram fechados em outro dia (${k.late} de ${k.exp}).`,'Fechamento retroativo indica que a verificação pode não ter ocorrido no turno.','Reforçar a execução e o fechamento do checklist no próprio turno.');
+      if(k.none)add('B',o,'chk',`${pl(k.none,'turno','turnos')} sem chamado de checklist aberto.`,'Turno sem registro de verificação.','Conferir a abertura automática do chamado no GLPI para o cliente.')}
+    if(c.cpu>=85)add('M',o,'infra',`Uso de CPU elevado no momento da geração (${Number(c.cpu).toFixed(0)}%).`,'Risco de lentidão ou indisponibilidade da instância.','Avaliar o consumo do servidor no Zabbix e dimensionar recursos se persistir.');
+  }
+  // visão consolidada
+  const pendT=R.cl.filter(o=>!o.c.pendOff).reduce((s,o)=>s+(o.pend||0),0);
+  if(R.cl.length>3&&pendT>0){const top3=R.cl.filter(o=>!o.c.pendOff&&o.pend>0).sort((x,y)=>y.pend-x.pend).slice(0,3),s3=top3.reduce((s,o)=>s+o.pend,0);
+    if(pct(s3,pendT)>=50)add('M',null,'op',`Concentração: ${top3.map(o=>o.c.name).join(', ')} somam ${pct(s3,pendT)}% dos expedientes não cadastrados.`,'O esforço de tratamento está concentrado em poucos clientes.','Priorizar uma força-tarefa nesses clientes.')}
+  const rb=R.cl.filter(o=>o.c.rbad).length;if(rb>=3)add('A',null,'integ',`${rb} clientes com rotina de consulta com erro ao mesmo tempo.`,'Pode indicar falha comum (credenciais, serviço MNI ou infraestrutura).','Investigar causa comum antes de tratar cliente a cliente.');
+  risks.sort((x,y)=>LVO[x.lv]-LVO[y.lv]||x.cli.localeCompare(y.cli,'pt-BR'));
+  return risks}
+
+// ── PDF
+async function buildPdf(R,risks){
+  const jsPDF=await pdfLibs();
+  const doc=new jsPDF({unit:'mm',format:'a4',compress:true});
+  const W=210,H=297,M=16,CW=W-2*M,TOP=M+9,BOT=H-20;
+  const NAVY=[11,42,104],INK=[33,37,46],MUT=[105,113,130],LINE=[214,219,229],SOFT=[244,246,250];
+  const LVC={A:[200,40,48],M:[176,112,0],B:[95,104,122]};
+  const genTxt=R.gen.toLocaleDateString('pt-BR')+' às '+R.gen.toLocaleTimeString('pt-BR');
+  const perTxt2=R.a===R.b?fBR(R.a):`${fBR(R.a)} a ${fBR(R.b)}`;
+  let y=M;
+  const lh=s=>s*.42;
+  const ensure=h=>{if(y+h>BOT){doc.addPage();y=TOP}};
+  const font=(s,st='normal',c=INK)=>{doc.setFont('helvetica',st);doc.setFontSize(s);doc.setTextColor(...c)};
+  const para=(t,o={})=>{font(o.size||10,o.bold?'bold':'normal',o.color||INK);const w=o.w||CW,x=o.x||M;const ls=doc.splitTextToSize(String(t),w);
+    for(const l of ls){ensure(lh(o.size||10)+.5);doc.text(l,x,y);y+=lh(o.size||10)}y+=o.after??2.5};
+  const h1=(n,t)=>{ensure(22);y+=4;font(13.5,'bold',NAVY);doc.text(`${n}. ${t}`,M,y);y+=2.2;doc.setDrawColor(...NAVY);doc.setLineWidth(.5);doc.line(M,y,M+CW,y);y+=6};
+  const h2=t=>{ensure(26);y+=2;font(10.5,'bold',INK);doc.text(t,M,y);y+=5};
+  const table=(head,body,o={})=>{doc.autoTable({startY:y,head:[head],body,theme:'grid',margin:{left:M,right:M,top:TOP,bottom:H-BOT},
+      styles:{font:'helvetica',fontSize:o.fs||8.4,cellPadding:1.7,textColor:INK,lineColor:LINE,lineWidth:.15,overflow:'linebreak',valign:'top'},
+      headStyles:{fillColor:NAVY,textColor:255,fontStyle:'bold',fontSize:o.fs||8.4},alternateRowStyles:{fillColor:SOFT},
+      columnStyles:o.cols||{},didParseCell:o.cell||null,rowPageBreak:'avoid'});y=doc.lastAutoTable.finalY+5};
+  const lvCell=col=>d=>{if(d.section==='body'&&d.column.index===col){const k=Object.keys(LV).find(k=>LV[k]===d.cell.raw);if(k){d.cell.styles.textColor=LVC[k];d.cell.styles.fontStyle='bold'}}};
+
+  // indicadores consolidados
+  const cl=R.cl,n=cl.length,pendT=cl.filter(o=>!o.c.pendOff).reduce((s,o)=>s+(o.pend||0),0),blankT=cl.reduce((s,o)=>s+(o.blank||0),0);
+  const rotOk=cl.filter(o=>o.c.rk==='OK').length,rotBad=cl.filter(o=>o.c.rbad).length,rotW=cl.filter(o=>RW.has(o.c.rk)).length;
+  const trbAll=cl.reduce((s,o)=>s+o.c.trb.length,0),trbOff=cl.reduce((s,o)=>s+o.c.tbadN,0);
+  const sslAl=cl.filter(o=>o.c.minssl!=null&&o.c.minssl<SSL_ALERT),sslMin=cl.filter(o=>o.c.minssl!=null).map(o=>o.c.minssl);
+  const ckS=k=>cl.reduce((s,o)=>s+(o.ck?o.ck[k]:0),0),ckDone=ckS('done'),ckExp=ckS('exp'),ckBad=ckS('bad'),ckLate=ckS('late'),ckNone=ckS('none');
+  const nA=risks.filter(r=>r.lv==='A').length,nM=risks.filter(r=>r.lv==='M').length,nB=risks.filter(r=>r.lv==='B').length;
+  const status=nA?['CRÍTICO',LVC.A,'há riscos altos que exigem ação imediata']:nM?['ATENÇÃO',LVC.M,'há pontos de atenção a tratar no curto prazo']:['REGULAR',[30,140,90],'não foram identificados riscos relevantes'];
+  const escopo=RP.scope==='all'?`Todos os clientes (${n})`:n===1?cl[0].c.name:`Grupo de ${n} clientes`;
+  const cliSit=o=>{const rs=risks.filter(r=>r.o===o);return rs.some(r=>r.lv==='A')?'Crítico':rs.some(r=>r.lv==='M')?'Atenção':rs.length?'Baixo risco':'Em dia'};
+
+  // ── capa / cabeçalho
+  try{doc.addImage(PDF_LOGO,'PNG',M,y,44,11.9)}catch(_){}
+  font(7.5,'bold',MUT);doc.text('RELATÓRIO DE MONITORAMENTO',W-M,y+4,{align:'right'});font(7.5,'normal',MUT);doc.text('Coreplan · Customer Success',W-M,y+8,{align:'right'});
+  y+=20;font(18,'bold',NAVY);doc.text('Relatório de Monitoramento dos Clientes',M,y);y+=6.5;
+  font(10,'normal',MUT);doc.text('Expedientes, rotinas de consulta, cadastros, tribunais, certificados e checklists',M,y);y+=7;
+  const meta=[['Período analisado',`${perTxt2} (${pl(busDays(R.a,R.b),'dia útil','dias úteis')})`],['Abrangência',escopo],['Gerado em',genTxt],['Status geral',status[0]]];
+  const boxH=meta.length*6+5;doc.setFillColor(...SOFT);doc.setDrawColor(...LINE);doc.roundedRect(M,y,CW,boxH,1.5,1.5,'FD');
+  let yy=y+6.5;for(const[k,v]of meta){font(9,'bold',MUT);doc.text(k,M+4,yy);font(9,k==='Status geral'?'bold':'normal',k==='Status geral'?status[1]:INK);doc.text(doc.splitTextToSize(v,CW-50)[0],M+44,yy);yy+=6}
+  y+=boxH+4;
+  if(n>1&&n<=12){font(8,'normal',MUT);para('Clientes: '+cl.map(o=>o.c.name).join(', ')+'.',{size:8,color:MUT,after:2})}
+  if(R.errs.length)para('Atenção: algumas fontes não responderam durante a geração ('+R.errs.join('; ')+'). Os números dessas fontes podem estar incompletos.',{size:8.5,color:LVC.A});
+
+  // ── 1. resumo executivo
+  let sec=0;h1(++sec,'Resumo executivo');
+  const topP=cl.filter(o=>!o.c.pendOff&&o.pend>0).sort((x,y)=>y.pend-x.pend).slice(0,3);
+  const frases=[
+    `Este relatório consolida a situação de ${n===1?'1 cliente ('+cl[0].c.name+')':n+' clientes'} no período de ${perTxt2}. O status geral é ${status[0]}: ${status[2]}.`,
+    `Foram identificados ${pl(pendT,'expediente não cadastrado','expedientes não cadastrados')}${topP.length&&n>1?`, com maior volume em ${topP.map(o=>`${o.c.name} (${nf(o.pend)})`).join(', ')}`:''}, e ${pl(blankT,'processo com cadastro em branco','processos com cadastro em branco')}.`,
+    `Rotinas de consulta: ${rotBad?`${rotBad} com erro`:'nenhuma com erro'}${rotW?` e ${rotW} para verificação`:''}${rotOk?`; ${rotOk} em dia`:''}. Integrações com tribunais: ${trbAll?`${trbAll-trbOff} de ${trbAll} online${trbOff?` (${trbOff} fora do ar)`:''}`:'sem integrações configuradas'}.`,
+    ckExp?`Checklists: ${ckDone} de ${ckExp} feitos (${pct(ckDone,ckExp)}%)${ckBad?`, ${pl(ckBad,'não feito','não feitos')}`:''}${ckLate?`, ${pl(ckLate,'fechado em outro dia','fechados em outro dia')}`:''}${ckNone?`, ${pl(ckNone,'turno sem chamado','turnos sem chamado')}`:''}.`:'Checklists: não há checklists previstos no período para os clientes selecionados.',
+    `Certificados SSL: ${sslAl.length?`${sslAl.length} com vencimento em menos de ${SSL_ALERT} dias (${sslAl.map(o=>`${o.c.name}: ${o.c.minssl} dias`).join(', ')})`:`nenhum com vencimento em menos de ${SSL_ALERT} dias`}${sslMin.length?`; menor prazo: ${Math.min(...sslMin)} dias`:''}.`,
+    `Foram levantados ${pl(risks.length,'ponto de atenção','pontos de atenção')}: ${nA} de risco alto, ${nM} médio e ${nB} baixo${nA?', com escalonamento recomendado para os de risco alto':''}.`];
+  for(const f of frases)para(f,{after:1.8});y+=1;
+  // ── 2. indicadores
+  h1(++sec,'Indicadores');
+  const sit=(bad,warn)=>bad?'Crítico':warn?'Atenção':'Em dia';
+  table(['Indicador','Resultado','Situação'],[
+    ['Expedientes não cadastrados no período',nf(pendT)+(cl.some(o=>o.c.pendOff)?' (CNI não entra na conta)':''),sit(0,pendT>0)],
+    ['Cadastros em branco',nf(blankT),sit(0,blankT>0)],
+    ['Rotinas de consulta com erro',`${rotBad} de ${rotOk+rotBad+rotW}`,sit(rotBad,rotW)],
+    ['Integrações com tribunais fora do ar',trbAll?`${trbOff} de ${trbAll}`:'—',sit(trbOff,0)],
+    ['Checklists feitos',ckExp?`${ckDone} de ${ckExp} (${pct(ckDone,ckExp)}%)`:'—',!ckExp?'—':ckBad>=3||pct(ckDone,ckExp)<80?'Crítico':ckBad||ckLate||ckNone?'Atenção':'Em dia'],
+    ['Checklists fechados com atraso',ckExp?`${ckLate} (${pct(ckLate,ckExp)}%)`:'—',sit(0,ckLate)],
+    [`Certificados com menos de ${SSL_ALERT} dias`,String(sslAl.length),sit(sslAl.length,0)],
+    ['Pontos de risco alto / médio / baixo',`${nA} alto · ${nM} médio · ${nB} baixo`,sit(nA,nM)],
+  ],{cols:{0:{cellWidth:78},1:{cellWidth:60},2:{fontStyle:'bold'}},cell:d=>{if(d.section==='body'&&d.column.index===2){d.cell.styles.textColor=d.cell.raw==='Crítico'?LVC.A:d.cell.raw==='Atenção'?LVC.M:[30,140,90]}}});
+  // ── 3. riscos
+  if(RP.opt.risk){h1(++sec,'Riscos e pontos de atenção');
+    if(!risks.length)para('Nenhum ponto de atenção identificado no período para os clientes selecionados.');
+    else table(['Nível','Cliente','Descrição','Impacto','Plano de ação'],risks.map(r=>[LV[r.lv],r.cli,r.desc,r.imp,r.acao]),
+      {fs:7.8,cols:{0:{cellWidth:13},1:{cellWidth:28},2:{cellWidth:50},3:{cellWidth:38}},cell:lvCell(0)});
+    // ── 4. pendências
+    h1(++sec,'Pendências e próximos passos');
+    const pend=risks.filter(r=>r.lv!=='B'||risks.length<=25);
+    if(!pend.length)para('Não há pendências abertas.');
+    else{para('Ações sugeridas a partir dos riscos acima. Responsáveis e prazos são sugestões e devem ser confirmados pela coordenação.',{size:8.8,color:MUT});
+      table(['Ação','Cliente','Responsável sugerido','Prazo','Status','Escalonar'],pend.map(r=>[r.acao,r.cli,r.resp,r.prazo,'Aberta',r.esc?'Sim':'Não']),
+        {fs:7.8,cols:{0:{cellWidth:62},1:{cellWidth:28},2:{cellWidth:34},3:{cellWidth:22},4:{cellWidth:12}},cell:d=>{if(d.section==='body'&&d.column.index===5&&d.cell.raw==='Sim'){d.cell.styles.textColor=LVC.A;d.cell.styles.fontStyle='bold'}}})}}
+  // ── 5. visão geral por cliente
+  if(RP.opt.overview&&n>1){h1(++sec,'Visão geral por cliente');
+    table(['Cliente','Situação','Exped. não cad.','Em branco','Rotina','Tribunais','SSL (dias)','Checklist','CPU'],
+      cl.map(o=>{const c=o.c;return[c.name,cliSit(o),c.pendOff?`${o.pend??'—'} *`:o.pend??'—',o.blank??'—',rotOf(c)[0]||'—',c.trb.length?`${c.trb.length-c.tbadN}/${c.trb.length} online`:'—',c.minssl??(c.sslErr?'sem resposta':'—'),o.ck&&o.ck.exp?`${o.ck.done}/${o.ck.exp}`:'—',c.cpu!=null?Number(c.cpu).toFixed(0)+'%':'—']}),
+      {fs:7.6,cols:{0:{cellWidth:38},1:{cellWidth:18,fontStyle:'bold'}},cell:d=>{if(d.section==='body'&&d.column.index===1){d.cell.styles.textColor=d.cell.raw==='Crítico'?LVC.A:d.cell.raw==='Atenção'?LVC.M:d.cell.raw==='Em dia'?[30,140,90]:MUT}}});
+    if(cl.some(o=>o.c.pendOff))para('* CNI não entra na conta de expedientes não cadastrados.',{size:7.5,color:MUT})}
+  // ── 6. detalhamento
+  if(RP.opt.detail){h1(++sec,'Detalhamento por cliente');
+    const compact=n>REPORT_DETAIL_MAX,days=RP.opt.chkdays&&!compact;
+    if(compact)para(`Com mais de ${REPORT_DETAIL_MAX} clientes, o detalhamento traz os indicadores e os pontos de atenção de cada cliente, sem listas de processos e sem o checklist dia a dia. Para esses detalhes, gere o relatório de um cliente ou de um grupo menor.`,{size:8.8,color:MUT});
+    cl.forEach((o,i)=>{const c=o.c;
+      if(i>0&&!compact&&(R.lists||days))doc.addPage(),y=TOP;else ensure(48);
+      font(12,'bold',NAVY);doc.text(`${sec}.${i+1} ${c.name}`,M,y);font(9,'bold',cliSit(o)==='Crítico'?LVC.A:cliSit(o)==='Atenção'?LVC.M:[30,140,90]);doc.text(cliSit(o).toUpperCase(),W-M,y,{align:'right'});y+=6;
+      table(['Indicador','Valor','Indicador','Valor'],[
+        ['Expedientes não cadastrados',c.pendOff?`${o.pend??'—'} (fora da conta)`:o.pst&&o.pst!=='ok'?'erro na consulta':String(o.pend??'—'),'Rotina de consulta',(rotOf(c)[0]||'—')+(c.rtot?` (${c.rtot})`:'')],
+        ['Cadastros em branco',String(o.blank??'—'),'Tribunais',c.trb.length?`${c.trb.length-c.tbadN} de ${c.trb.length} online`:'sem configuração'],
+        ['Certificado SSL',c.minssl!=null?`${c.minssl} dias para renovação`:c.sslErr?'sem resposta':'não monitorado','CPU (agora)',c.cpu!=null?Number(c.cpu).toFixed(0)+'%':'—'],
+        ['Checklists no período',o.ck&&o.ck.exp?`${o.ck.done} de ${o.ck.exp} feitos (${pct(o.ck.done,o.ck.exp)}%)`:'—','Escala',c.ck&&c.ck.escala?`manhã ${c.ck.escala.manha} · tarde ${c.ck.escala.tarde}`:'—']],
+        {fs:8,cols:{0:{fontStyle:'bold',cellWidth:42},2:{fontStyle:'bold',cellWidth:34}}});
+      const rs=risks.filter(r=>r.o===o);
+      if(rs.length){h2('Pontos de atenção');table(['Nível','Descrição','Plano de ação'],rs.map(r=>[LV[r.lv],r.desc,r.acao]),{fs:7.8,cols:{0:{cellWidth:14},1:{cellWidth:80}},cell:lvCell(0)})}
+      if(Array.isArray(o.pendRows)&&o.pendRows.length){h2(`Expedientes não cadastrados (${o.pendRows.length})`);
+        const g={};o.pendRows.forEach(r=>{const k=r.failure_message||'Sem motivo informado';g[k]=(g[k]||0)+1});
+        table(['Motivo da falha','Qtde','%'],Object.entries(g).sort((x,y)=>y[1]-x[1]).map(([k,v])=>[k,v,pct(v,o.pendRows.length)+'%']),{fs:7.8,cols:{1:{cellWidth:16,halign:'right'},2:{cellWidth:14,halign:'right'}}});
+        const lim=200,rows=o.pendRows.slice(0,lim);
+        table(['Processo','Motivo','Disponibilizado em'],rows.map(r=>[r.judicial_process_number||'—',r.failure_message||'—',fDT(r.available_at||r.created_at)]),{fs:7.4,cols:{0:{cellWidth:48},2:{cellWidth:32}}});
+        if(o.pendRows.length>lim)para(`Mostrando ${lim} de ${o.pendRows.length} expedientes.`,{size:7.5,color:MUT})}
+      else if(o.pendRows&&o.pendRows.err)para('Lista de expedientes indisponível: '+o.pendRows.err+'.',{size:8,color:MUT});
+      if(Array.isArray(o.rotRows)&&o.rotRows.length){h2('Rotinas de consulta');
+        table(['Descrição','Status','Último início','Última conclusão','Último processamento'],o.rotRows.map(r=>[r.description||'—',(ROT[String(r.status_rotina||'').toUpperCase()]||[r.status_rotina||'—'])[0],fDT(r.last_start),fDT(r.last_finished),r.last_processing||'—']),{fs:7.4,cols:{0:{cellWidth:52}}})}
+      if(Array.isArray(o.blankRows)&&o.blankRows.length){h2(`Cadastros em branco (${o.blankRows.length})`);
+        const cols=Object.keys(o.blankRows[0]).filter(k=>k!=='content').slice(0,4);
+        table(cols.map(k=>k.replace(/_/g,' ').replace(/^./,m=>m.toUpperCase())),o.blankRows.slice(0,200).map(r=>cols.map(k=>/_at$|data/i.test(k)?fDT(r[k]):String(r[k]??'—'))),{fs:7.4})}
+      if(compact){y+=2;return}
+      if(c.trb.length){h2('Integrações com tribunais');table(['Tribunal','Situação','HTTP','Erro'],c.trb.map(t=>[t.nome,t.status==='OK'?'Online':'Fora do ar',String(t.code??'—'),t.error||'—']),{fs:7.6,cols:{0:{cellWidth:50},1:{cellWidth:22},2:{cellWidth:14}},cell:d=>{if(d.section==='body'&&d.column.index===1&&d.cell.raw==='Fora do ar'){d.cell.styles.textColor=LVC.A;d.cell.styles.fontStyle='bold'}}})}
+      if(c.ssl.length){h2('Certificados SSL');table(['Endereço','Dias para renovação','Válido até'],c.ssl.map(s=>[s.host,sslNum(s)?String(s.dias_restantes):'sem resposta',s.validade||'—']),{fs:7.6})}
+      if(days&&o.ck&&o.ck.it.length){h2('Checklists dia a dia');
+        const days=[...new Set(o.ck.it.map(x=>x.iso))].reverse();
+        const cell=x=>{if(!x)return'—';const r=x.rec;return CKL[x.st]+(r?` · #${r.id}`:'')+(r&&r.feito?` · solução ${fmtSol(r.solucao,x.iso)}`:'')+(r&&r.tecnico?` · ${r.tecnico}`:'')};
+        table(['Dia','Manhã (08h)','Tarde (15h)'],days.map(d=>{const it=o.ck.it.filter(x=>x.iso===d);return[`${fmtDM(d)} ${WDS[wdOf(d)]}`,cell(it.find(x=>x.sh==='M')),cell(it.find(x=>x.sh==='T'))]}),
+          {fs:7.4,cols:{0:{cellWidth:20}},cell:d=>{if(d.section==='body'&&d.column.index>0){const v=String(d.cell.raw);if(v.startsWith('Não feito'))d.cell.styles.textColor=LVC.A;else if(v.startsWith('Feito com atraso')||v.startsWith('Em aberto'))d.cell.styles.textColor=LVC.M;else if(v.startsWith('Sem'))d.cell.styles.textColor=MUT}}})}
+    })}
+  // ── notas
+  h1(++sec,'Notas metodológicas');
+  ['Expedientes não cadastrados e cadastros em branco consideram o período selecionado. Rotinas, tribunais, certificados e CPU refletem a situação no momento da geração.',
+   'Checklist feito = chamado com data de solução; "feito com atraso" = chamado fechado em outro dia; "não feito" = chamado sem solução; "sem chamado" = turno sem chamado aberto. Fins de semana e dias sem checklist para nenhum cliente (feriados) não entram na conta.',
+   `Certificados entram como risco alto quando faltam menos de ${SSL_ALERT} dias para a renovação. O cliente CNI não entra na conta de expedientes não cadastrados.`,
+   'Níveis de risco, responsáveis e prazos são sugeridos automaticamente por regras do painel e devem ser validados pela coordenação.']
+   .forEach(t=>para('• '+t,{size:8.6,color:INK,after:1.5}));
+  // ── cabeçalho e rodapé de todas as páginas
+  const np=doc.getNumberOfPages();
+  for(let i=1;i<=np;i++){doc.setPage(i);
+    if(i>1){font(7.5,'bold',NAVY);doc.text('SPA Vision · Relatório de Monitoramento',M,M+2);font(7.5,'normal',MUT);doc.text(`${escopo} · ${perTxt2}`,W-M,M+2,{align:'right'});doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.line(M,M+4,W-M,M+4)}
+    doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.line(M,H-14,W-M,H-14);
+    font(7.3,'normal',MUT);doc.text(`Coreplan · SPA Vision — documento gerado automaticamente em ${genTxt}`,M,H-9.5);doc.text(`Página ${i} de ${np}`,W-M,H-9.5,{align:'right'})}
+  const slugN=s=>norm(s).slice(0,30)||'clientes';
+  const fname=`Relatorio_SPA_Vision_${R.a===R.b?R.a:R.a+'_a_'+R.b}_${RP.scope==='all'?'todos':n===1?slugN(cl[0].c.name):n+'_clientes'}.pdf`;
+  doc.save(fname);return fname}
+
+async function generateReport(){
+  if(RP.busy)return;const msg=$('#rpMsg');
+  if(!rpClients().length){msg.textContent='Selecione ao menos um cliente.';msg.className='note c-ba';return}
+  if(RP.a>RP.b){msg.textContent='A data final não pode ser anterior à inicial.';msg.className='note c-ba';return}
+  RP.busy=true;paintReport();$('#rpGo').innerHTML='<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/></svg> Gerando…';
+  const progress=t=>{msg.textContent=t;msg.className='note'};
+  try{progress('Carregando gerador de PDF…');await pdfLibs();
+    const R=await reportData(progress);progress('Analisando riscos e montando o documento…');
+    const fname=await buildPdf(R,insights(R));
+    msg.textContent='Relatório gerado: '+fname;msg.className='note c-ok';toast('Relatório gerado')}
+  catch(e){console.error(e);msg.textContent='Não foi possível gerar o relatório: '+(e&&e.message||e);msg.className='note c-ba'}
+  finally{RP.busy=false;$('#rpGo').textContent='Gerar relatório';paintReport()}}
+
+// ── eventos do modal
+$('#rpOpen').onclick=()=>openReport();
+$('#rpOne').onclick=()=>cur&&openReport(cur);
+$('#rpX').onclick=$('#rpCancel').onclick=closeReport;
+$('#rp').addEventListener('click',e=>{if(e.target.id==='rp')closeReport()});
+$('#rpScope').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;RP.scope=b.dataset.s;paintReport()};
+$('#rpQ').oninput=e=>{RP.q=e.target.value;paintReport()};
+$('#rpList').onchange=e=>{const i=e.target.closest('input');if(!i)return;i.checked?RP.sel.add(i.value):RP.sel.delete(i.value);paintReport()};
+$('#rpQuick').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;const k=b.dataset.k,L=RP.L||[];
+  if(k==='none')RP.sel.clear();else L.filter(c=>k==='all'||(k==='crit'?c.sev===3:c.type===k)).forEach(c=>RP.sel.add(c.p));paintReport()};
+$('#rpPer').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;const r=rpRange(b.dataset.v);RP.per=b.dataset.v;RP.a=r[0];RP.b=r[1];paintReport()};
+const rpDates=()=>{const a=$('#rpD1').value,b=$('#rpD2').value||a;if(!a)return;RP.per='custom';RP.a=a;RP.b=b<a?a:b;paintReport()};
+$('#rpD1').onchange=$('#rpD2').onchange=rpDates;
+$('#rpOpts').onchange=e=>{const i=e.target.closest('input[id^="rpO-"]');if(!i)return;RP.opt[i.id.slice(4)]=i.checked;paintReport()};
+$('#rpGo').onclick=generateReport;
+
 /* ───────── alertas, período, eventos ───────── */
 let ac;function alerta(n){toast('🔴 Rotina com problema: '+n.slice(0,4).join(', ')+(n.length>4?'…':''),'ba',12000);if(mute)return;
   try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.setValueAtTime(.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.6);o.start();o.stop(ac.currentTime+.6)}catch(_){}}
@@ -940,7 +1308,7 @@ const paintMute=()=>{const b=$('#mute');b.innerHTML=mute?ICON.off:ICON.bell;b.se
 $('#mute').onclick=()=>{mute=!mute;lsSet('spa:mute',mute?'1':'0');paintMute()};
 paintMute();
 let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{Q=e.target.value;render()},120)};
-document.addEventListener('keydown',e=>{if(e.key==='Escape')close();else if(e.key==='/'&&!/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();$('#q').focus()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#rp').hidden){closeReport();return}close()}else if(e.key==='/'&&!/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();$('#q').focus()}});
 
 /* ───────── ciclo de vida ───────── */
 const clk=$('#clock');
