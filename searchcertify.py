@@ -20,6 +20,14 @@ def obter_nome_cliente(url):
     host = limpar_host(url)
     partes = host.split(".")
 
+    # Nomes fixos para hosts que não seguem o padrão
+    NOMES = {
+        "pbprev": "PBPREV",                     # Previdência da Paraíba
+        "saj": "PGM Santo Antônio de Jesus",
+    }
+    if partes[0] in NOMES:
+        return NOMES[partes[0]]
+
     # spa.pge.mt.gov.br -> PGE MT
     if len(partes) >= 3 and partes[0] == "spa" and partes[1] == "pge":
         return f"PGE {partes[2].upper()}"
