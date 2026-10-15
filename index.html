@@ -87,14 +87,12 @@ h1.logo img{height:clamp(40px,4.2vw,52px);width:auto;display:block}
 #alerts .lbl b{font:700 10.5px var(--mono);background:var(--bad);color:#0D121C;border-radius:99px;padding:1px 7px;letter-spacing:0}
 .ticker{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
 .ticker .track{display:flex;width:max-content}
-.ticker .set{display:flex;gap:6px;padding-right:6px;flex:none}
-.ticker .set+.set{display:none}
-.ticker.run .set+.set{display:flex}
+.ticker .set{display:flex;align-items:center;justify-content:space-around;gap:var(--gap,14px);padding-right:var(--gap,14px);flex:none}
 .ticker.run .track{animation:tick var(--dur,40s) linear infinite}
 .ticker.run:hover .track,.ticker.run:focus-within .track{animation-play-state:paused}
 .ticker .pill{white-space:nowrap;flex-wrap:nowrap}
 @keyframes tick{to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker.run .track{animation:none}.ticker.run .set+.set{display:none}}
+@media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker.run .track{animation:none}.ticker .set+.set{display:none}}
 .pill{display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px 6px;border:1px solid;border-radius:14px;padding:3px 10px;font-size:12px;background:transparent;max-width:100%;text-align:left}
 .pill.bad{color:var(--bad);border-color:rgba(255,107,114,.5);background:var(--bad-soft)}
 .pill.wait{color:var(--wait);border-color:rgba(242,184,75,.45);background:var(--wait-soft)}
@@ -702,8 +700,12 @@ function paintAlerts(L){
 }
 // barra de alertas: rola sem parar quando não cabe na tela (pausa ao passar o mouse)
 function tickerFit(){const el=$('#alertPills'),tr=el&&el.querySelector('.track');if(!tr)return;
-  const w=tr.firstElementChild.scrollWidth,on=w>el.clientWidth;
-  el.classList.toggle('run',on);tr.style.setProperty('--dur',Math.max(20,w/45)+'s')}
+  // cada bloco ocupa no mínimo a largura da barra; com poucos alertas, o espaço entre eles aumenta
+  const sets=tr.querySelectorAll('.set'),cw=el.clientWidth;
+  sets.forEach(x=>{x.style.minWidth=cw+'px'});
+  const w=sets[0].getBoundingClientRect().width,n=sets[0].children.length;
+  el.classList.add('run');tr.style.setProperty('--dur',Math.max(18,w/45)+'s');
+  tr.style.setProperty('--gap',(n<=3?Math.max(40,Math.round(cw/(n*3))):14)+'px')}
 window.addEventListener('resize',()=>requestAnimationFrame(tickerFit));
 function paintKpis(L,orf){
   const sum=f=>L.reduce((s,c)=>s+(f(c)||0),0),cnt=f=>L.filter(f).length;
