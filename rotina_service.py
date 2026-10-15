@@ -14,7 +14,9 @@ Regras (mesma lógica da query SQL):
 from __future__ import annotations
 
 import os
+import re
 import time
+import unicodedata
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -36,6 +38,24 @@ logger = logging.getLogger(__name__)
 ROTINA_CACHE_TTL = int(os.getenv("ROTINA_CACHE_TTL_SECONDS", 300))  # 5 min
 ROTINA_ALERT_THRESHOLD = int(os.getenv("ROTINA_ALERT_THRESHOLD", 1))  # alerta se ≥1 cliente falhar
 _OFFSET_HOURS = 3  # BRT = UTC-3
+
+# Rotinas que não entram no status do cliente.
+# Chave: trecho do nome do cliente (sem acento/espaço); valor: trechos da descrição da rotina.
+ROTINAS_IGNORADAS = {
+    "jaboatao": ["djediariodejusticaeletronico", "diariodejusticaeletronico"],
+}
+
+
+def _norm(s: Any) -> str:
+    s = unicodedata.normalize("NFD", str(s or ""))
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _rotina_ignorada(cliente: str, descricao: str) -> bool:
+    n, d = _norm(cliente), _norm(descricao)
+    return any(k in n and any(t in d for t in trechos) for k, trechos in ROTINAS_IGNORADAS.items())
+
 
 # ─── CACHE ──────────────────────────────────────────────────────────────────
 _ROTINA_CACHE: Dict[str, Any] = {"data": None, "time": 0}
@@ -212,6 +232,18 @@ def _fetch_rotina_client(
             columns = [c["name"] for c in cols]
             df = pd.DataFrame(rows, columns=columns)
             records = [_row_to_dict(r) for _, r in df.iterrows()]
+            ignoradas = [r for r in records if _rotina_ignorada(cfg["name"], r.get("description"))]
+            if ignoradas:
+                records = [r for r in records if r not in ignoradas]
+                base["ignoradas"] = [r.get("description") for r in ignoradas]
+                logger.info(f"[ROTINA] {cfg['name']} → ignorando: {base['ignoradas']}")
+            if not records:
+                base["status"] = "SEM_ROTINA"
+                base["total"] = 0
+                base["nao_rodou"] = 0
+                base["desativadas"] = 0
+                base["rotinas"] = []
+                return base
 
             # ── Contadores auxiliares ────────────────────────────────────
             base["total"] = len(records)

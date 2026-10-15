@@ -83,6 +83,18 @@ h1.logo img{height:clamp(40px,4.2vw,52px);width:auto;display:block}
 .alerts .txt b{color:var(--text);font-weight:600}
 @keyframes beat{50%{opacity:.35}}
 .pills{display:flex;flex-wrap:wrap;gap:6px;min-width:0;flex:1}
+#alerts{position:sticky;top:8px;z-index:30;flex-wrap:nowrap;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#alerts .lbl b{font:700 10.5px var(--mono);background:var(--bad);color:#0D121C;border-radius:99px;padding:1px 7px;letter-spacing:0}
+.ticker{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+.ticker .track{display:flex;width:max-content}
+.ticker .set{display:flex;gap:6px;padding-right:6px;flex:none}
+.ticker .set+.set{display:none}
+.ticker.run .set+.set{display:flex}
+.ticker.run .track{animation:tick var(--dur,40s) linear infinite}
+.ticker.run:hover .track,.ticker.run:focus-within .track{animation-play-state:paused}
+.ticker .pill{white-space:nowrap;flex-wrap:nowrap}
+@keyframes tick{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker.run .track{animation:none}.ticker.run .set+.set{display:none}}
 .pill{display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px 6px;border:1px solid;border-radius:14px;padding:3px 10px;font-size:12px;background:transparent;max-width:100%;text-align:left}
 .pill.bad{color:var(--bad);border-color:rgba(255,107,114,.5);background:var(--bad-soft)}
 .pill.wait{color:var(--wait);border-color:rgba(242,184,75,.45);background:var(--wait-soft)}
@@ -334,7 +346,7 @@ body.mopen{overflow:hidden}
   #grid{grid-template-columns:1fr}
   .clock{display:none}
   #q{width:100%}.fr{width:100%}.fr .field{flex:1}
-  .alerts .pills{flex-basis:100%}
+  #alerts .lbl{display:none}
   #toast{right:16px;bottom:16px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -352,7 +364,7 @@ body.mopen{overflow:hidden}
     <div class="controls">
       <div class="clock" id="clock" aria-hidden="true">--:--:--</div>
       <div class="seg" id="per" role="group" aria-label="Período">
-        <button data-v="hoje" aria-pressed="true">Hoje</button><button data-v="semana" aria-pressed="false">7 dias</button><button data-v="30d" aria-pressed="false">30 dias</button><button data-v="mes" aria-pressed="false">Mês</button><button data-v="mesant" aria-pressed="false">Mês anterior</button>
+        <button data-v="hoje" aria-pressed="true">Hoje</button><button data-v="ontem" aria-pressed="false">Ontem</button><button data-v="semana" aria-pressed="false">7 dias</button><button data-v="30d" aria-pressed="false">30 dias</button><button data-v="mes" aria-pressed="false">Mês</button><button data-v="mesant" aria-pressed="false">Mês anterior</button>
       </div>
       <div class="rng" id="rng" role="group" aria-label="Período personalizado" data-on="false">
         <label for="d1">De</label><input class="field" type="date" id="d1" aria-label="Data inicial">
@@ -380,8 +392,8 @@ body.mopen{overflow:hidden}
 
   <section class="alerts src-fail" id="fail" role="alert" hidden></section>
   <section class="alerts" id="alerts" hidden>
-    <span class="lbl"><i></i>Atenção agora</span>
-    <div class="pills" id="alertPills"></div>
+    <span class="lbl"><i></i>Atenção agora <b id="alertCount"></b></span>
+    <div class="ticker" id="alertPills"></div>
   </section>
 
   <section class="kpis" id="kpis" aria-label="Indicadores"></section>
@@ -436,7 +448,7 @@ body.mopen{overflow:hidden}
         <div class="note" id="rpCount"></div>
       </section>
       <section class="ms"><h4>Período</h4>
-        <div class="rp-per"><div class="seg" id="rpPer" role="group" aria-label="Período do relatório"><button data-v="hoje">Hoje</button><button data-v="semana">7 dias</button><button data-v="30d">30 dias</button><button data-v="mes">Mês</button><button data-v="mesant">Mês anterior</button></div>
+        <div class="rp-per"><div class="seg" id="rpPer" role="group" aria-label="Período do relatório"><button data-v="hoje">Hoje</button><button data-v="ontem">Ontem</button><button data-v="semana">7 dias</button><button data-v="30d">30 dias</button><button data-v="mes">Mês</button><button data-v="mesant">Mês anterior</button></div>
         <div class="rng" id="rpRng" data-on="false"><label for="rpD1">De</label><input class="field" type="date" id="rpD1"><label for="rpD2">até</label><input class="field" type="date" id="rpD2"></div></div>
       </section>
       <section class="ms"><h4>Conteúdo</h4>
@@ -486,7 +498,7 @@ const ICON={
 
 /* ───────── fontes de dados (carregam em paralelo e hidratam a tela conforme chegam) ───────── */
 const perA=()=>sessionStorage.getItem('spa_inicio')||isoD(new Date()),perB=()=>sessionStorage.getItem('spa_fim')||perA(),perKey=()=>perA()+'_'+perB();
-const perWord=()=>perA()===perB()?(P==='hoje'?'hoje':'no dia'):'no período';
+const perWord=()=>perA()===perB()?(P==='hoje'?'hoje':P==='ontem'?'ontem':'no dia'):'no período';
 const qs=()=>{const a=sessionStorage.getItem('spa_inicio'),b=sessionStorage.getItem('spa_fim');return a?`?dataInicio=${a}${b?'&dataFim='+b:''}`:''};
 async function j(u,ms=90000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
   try{const r=await fetch(u,{signal:c.signal,headers:{Accept:'application/json'}});
@@ -517,7 +529,7 @@ function save(){try{localStorage.setItem(CK,JSON.stringify({p:perKey(),s:Object.
 function hydrate(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.p===perKey())Object.assign(S,c.s)}catch(_){}}
 
 /* ───────── checklists (planilha do GLPI via /api/checklist) ───────── */
-const CHK_GRACE_MIN=120; // checklist de hoje sem solução fica "em aberto" nas 2h após a abertura; depois vira "não feito" (0 = igual ao painel antigo)
+const CHK_DEADLINE={M:12,T:17}; // checklist de hoje sem solução fica "em aberto" até 12h (manhã) / 17h (tarde); depois vira "não feito" e gera alerta
 const TICKET_URL='https://suporte.coreplan.com.br/front/ticket.form.php?id=';
 const SHN={M:'Manhã',T:'Tarde'},SHH={M:'08h',T:'15h'},SHHOUR={M:8,T:15};
 const CKL={ok:'Feito',late:'Feito com atraso',open:'Em aberto',bad:'Não feito',wait:'Aguardando abertura',none:'Sem chamado',off:'Fim de semana',hol:'Sem abertura no dia'};
@@ -563,7 +575,7 @@ function ckSt(rec,iso,sh){
   const now=new Date(),today=isoD(now);
   if(rec){
     if(rec.feito)return /^\d{4}-\d{2}-\d{2}/.test(rec.solucao||'')&&rec.solucao.slice(0,10)!==iso?'late':'ok';
-    if(iso===today){const[h,mi]=String(rec.aberto||'0:0').split(':').map(Number);if(now.getHours()*60+now.getMinutes()-(h*60+mi)<CHK_GRACE_MIN)return'open'}
+    if(iso===today&&now.getHours()<CHK_DEADLINE[sh])return'open'
     return'bad'}
   if(isWE(iso))return'off';
   if(iso<today&&CKM.min&&iso>=CKM.min&&!CKM.all.has(iso))return'hol'; // nenhum cliente teve checklist (feriado)
@@ -643,7 +655,7 @@ const trbKnown=()=>(S.trib||[]).length>0; // lista vazia = status ainda não dis
 const val=(k,v)=>v!=null?v:ld(k)?'<i class="sh"></i>':'—';
 function perTxt(){const a=sessionStorage.getItem('spa_inicio'),b=sessionStorage.getItem('spa_fim');
   const f=s=>s?s.split('-').reverse().join('/'):'';
-  return P==='hoje'?`hoje (${f(a)})`:P==='semana'?`últimos 7 dias (${f(a)} a ${f(b)})`:P==='mes'?`mês atual (${f(a)} a ${f(b)})`:P==='30d'?`últimos 30 dias (${f(a)} a ${f(b)})`:P==='mesant'?`mês anterior (${f(a)} a ${f(b)})`:P==='custom'?(a===b?f(a):`${f(a)} a ${f(b)}`):'padrão'}
+  return P==='hoje'?`hoje (${f(a)})`:P==='ontem'?`ontem (${f(a)})`:P==='semana'?`últimos 7 dias (${f(a)} a ${f(b)})`:P==='mes'?`mês atual (${f(a)} a ${f(b)})`:P==='30d'?`últimos 30 dias (${f(a)} a ${f(b)})`:P==='mesant'?`mês anterior (${f(a)} a ${f(b)})`:P==='custom'?(a===b?f(a):`${f(a)} a ${f(b)}`):'padrão'}
 
 /* ───────── render ───────── */
 let raf=0;const render=()=>{raf||(raf=requestAnimationFrame(()=>{raf=0;paint()}))};
@@ -683,10 +695,16 @@ function paintAlerts(L){
     if(w.length)items.push({c,tab,s,sm:w.join(' · ')})});
   items.sort((a,b)=>b.s-a.s||a.c.name.localeCompare(b.c.name,'pt-BR'));
   $('#alerts').hidden=!items.length;
-  const LIM=10,shown=alertsAll?items:items.slice(0,LIM);
-  setHTML('#alertPills',shown.map(p=>`<button class="pill ${p.s>1?'bad':'wait'}" data-open="${esc(p.c.p)}" data-tab="${p.tab}">${esc(p.c.name)} <small>· ${esc(p.sm)}</small></button>`).join('')
-    +(items.length>LIM?`<button class="pill more" data-more>${alertsAll?'Mostrar menos':'+'+(items.length-LIM)+' clientes'}</button>`:''));
+  const pills=items.map(p=>`<button class="pill ${p.s>1?'bad':'wait'}" data-open="${esc(p.c.p)}" data-tab="${p.tab}">${esc(p.c.name)} <small>· ${esc(p.sm)}</small></button>`).join('');
+  const el=$('#alertPills'),html=`<div class="track"><div class="set">${pills}</div><div class="set" aria-hidden="true">${pills}</div></div>`;
+  $('#alertCount').textContent=items.length;
+  if(el._h!==html){el.innerHTML=html;el._h=html;requestAnimationFrame(tickerFit)}
 }
+// barra de alertas: rola sem parar quando não cabe na tela (pausa ao passar o mouse)
+function tickerFit(){const el=$('#alertPills'),tr=el&&el.querySelector('.track');if(!tr)return;
+  const w=tr.firstElementChild.scrollWidth,on=w>el.clientWidth;
+  el.classList.toggle('run',on);tr.style.setProperty('--dur',Math.max(20,w/45)+'s')}
+window.addEventListener('resize',()=>requestAnimationFrame(tickerFit));
 function paintKpis(L,orf){
   const sum=f=>L.reduce((s,c)=>s+(f(c)||0),0),cnt=f=>L.filter(f).length;
   const tot=sum(c=>c.pendOff?0:c.pend),bl=sum(c=>c.blank);
@@ -769,10 +787,7 @@ function ckRow(c){
   else{const cls=o.bad?'bad':o.done<o.exp?'open':'ok';
     const tip=`${fmtDM(PA)} a ${fmtDM(PB)} · ${o.done} de ${o.exp} feitos · ${o.ok} no dia · ${o.late} com atraso · ${o.bad} não feitos · ${o.none} sem chamado${o.open?` · ${o.open} em aberto`:''}`;
     main=`<span class="ckp ${cls}" title="${esc(tip)}"><b>${o.done}/${o.exp}</b> feitos</span>${o.bad?`<span class="ckp bad">${o.bad} não feito${o.bad>1?'s':''}</span>`:o.late?`<span class="ckp open">${o.late} com atraso</span>`:''}`}
-  const days=[],end=PB<TD?PB:TD;for(let d=end;days.length<10;d=addD(d,-1))if(!isWE(d))days.unshift(d);
-  const strip=days.map(iso=>{const r=k.by.get(iso)||{},m=ckSt(r.M,iso,'M'),t=ckSt(r.T,iso,'T');
-    return`<i title="${esc(fmtDM(iso)+' '+WDS[wdOf(iso)]+' · manhã: '+CKL[m].toLowerCase()+' · tarde: '+CKL[t].toLowerCase())}"><b class="${m}"></b><b class="${t}"></b></i>`}).join('');
-  return`<div class="ckrow on"><span class="ck-l">Checklist</span>${main}<span class="ck-strip" aria-label="10 dias úteis até ${fmtDM(end)}">${strip}</span></div>`}
+  return`<div class="ckrow on"><span class="ck-l">Checklist</span>${main}</div>`}
 function card(c){
   const[rl,rc]=rotOf(c),[h,hl]=SEV[c.sev],[wc,wt]=why(c);
   const err=c.pst&&c.pst!=='ok';
@@ -911,7 +926,7 @@ function renderChkTab(L){
       <div><div class="bar"><i style="width:${pc(cnt.ok)};background:var(--ok)"></i><i style="width:${pc(cnt.late+cnt.open)};background:var(--wait)"></i><i style="width:${pc(cnt.bad)};background:var(--bad)"></i><i style="width:${pc(cnt.none)};background:var(--line)"></i></div>
       <div class="lg"><span><i class="ok"></i>Feito no dia<b>${cnt.ok}</b></span><span><i class="late"></i>Feito com atraso<b>${cnt.late}</b></span>${cnt.open?`<span><i class="late"></i>Em aberto<b>${cnt.open}</b></span>`:''}<span><i class="bad"></i>Não feito<b>${cnt.bad}</b></span><span><i class="none"></i>Sem chamado<b>${cnt.none}</b></span></div></div></div>
     <div class="ckheat"><div class="ckh-days"><span></span><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span></div><div class="ckh-grid">${heat}</div></div>
-    <div class="note" style="font-size:12px;color:var(--muted)">Cada quadrado é um dia útil: metade de cima = manhã (08h), metade de baixo = tarde (15h). Clique para ir ao dia na tabela. “Com atraso” = chamado fechado em outro dia. Dias sem checklist para nenhum cliente (feriados) não entram na conta.</div>
+    <div class="note" style="font-size:12px;color:var(--muted)">Cada quadrado é um dia útil: metade de cima = manhã (08h), metade de baixo = tarde (15h). Clique para ir ao dia na tabela. “Com atraso” = chamado fechado em outro dia. Hoje, sem solução = “em aberto” até 12h (manhã) / 17h (tarde). Dias sem checklist para nenhum cliente (feriados) não entram na conta.</div>
     ${rows?`<div class="tw"><table><thead><tr><th>Dia</th><th>Manhã · 08h</th><th>Tarde · 15h</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="empty">Nenhum checklist com esse filtro no período.</p>'}`)}
 function renderSslTab(L){
   const c=findCur(L),body=$('#body'),sub=$('#sub');
@@ -996,7 +1011,7 @@ const pl=(n,um,varios)=>`${nf(n)} ${n===1?um:varios}`;
 // ── estado do modal
 const RP={scope:'all',sel:new Set(),q:'',per:'hoje',a:null,b:null,opt:{risk:true,overview:true,detail:true,lists:true,chkdays:true},busy:false};
 function rpRange(v){const t=isoD(new Date());
-  if(v==='hoje')return[t,t];if(v==='semana')return[addD(t,-6),t];if(v==='30d')return[addD(t,-29),t];
+  if(v==='hoje')return[t,t];if(v==='ontem'){const d=isoD(prevBusiness(new Date()));return[d,d]}if(v==='semana')return[addD(t,-6),t];if(v==='30d')return[addD(t,-29),t];
   if(v==='mes')return[t.slice(0,8)+'01',t];
   if(v==='mesant'){const d=new Date();const a=new Date(d.getFullYear(),d.getMonth()-1,1),b=new Date(d.getFullYear(),d.getMonth(),0);return[isoD(a),isoD(b)]}
   return null}
@@ -1337,8 +1352,10 @@ const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 function applyPer(a,b){perDay=ymd(new Date());
   a?(sessionStorage.setItem('spa_inicio',ymd(a)),sessionStorage.setItem('spa_fim',ymd(b))):(sessionStorage.removeItem('spa_inicio'),sessionStorage.removeItem('spa_fim'));
   DC.clear();['resumo','blank'].forEach(k=>{S[k]=undefined;S.err[k]=0});render();run('resumo');run('blank')}
+const prevBusiness=n=>{const d=new Date(n);d.setDate(d.getDate()-1);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()-1);return d}; // ontem; no fim de semana, volta para sexta
 function setPer(v){P=v;const n=new Date();let a=null,b=n;
   if(v==='hoje')a=n;
+  else if(v==='ontem'){a=prevBusiness(n);b=a}
   else if(v==='semana')a=new Date(n-6*864e5);
   else if(v==='30d')a=new Date(n-29*864e5);
   else if(v==='mes')a=new Date(n.getFullYear(),n.getMonth(),1);
@@ -1362,7 +1379,7 @@ $('#sort').value=SORTS[SORT]?SORT:'sev';
 $('#sort').onchange=e=>{SORT=e.target.value;lsSet('spa:sort',SORT);render()};
 $('#grid').onclick=e=>{if(e.target.closest('a'))return;const c=e.target.closest('.cc[data-p]');c&&open(c.dataset.p)};
 $('#grid').onkeydown=e=>{if(e.target.closest('a'))return;if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.cc[data-p]');if(c){e.preventDefault();open(c.dataset.p)}}};
-$('#alertPills').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-more')){alertsAll=!alertsAll;render();return}open(b.dataset.open,b.dataset.tab)};
+$('#alertPills').onclick=e=>{const b=e.target.closest('button');if(!b)return;open(b.dataset.open,b.dataset.tab)};
 $('#tabs').onclick=e=>{const b=e.target.closest('button[data-t]');b&&cur&&load(b.dataset.t)};
 $('#body').onclick=e=>{
   if(e.target.id==='retry'){DC.delete(DT[tab](cur));load(tab);return}
